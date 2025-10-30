@@ -1,0 +1,20 @@
+name = "chatbot-ui"
+compatibility_date = "2024-01-01"
+
+[build]
+command = "npm run build"
+cwd = "."
+
+[build.upload]
+format = "modules"
+main = ".next/server/pages/_middleware.js"
+
+[[build.upload.rules]]
+type = "ESModule"
+globs = ["**/*.js"]
+
+[env.production]
+name = "chatbot-ui"
+
+# Required by Cloudflare Pages deployments
+pages_build_output_dir = ".next"
