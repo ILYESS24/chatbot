@@ -64,7 +64,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
     ...(availableOpenRouterModels || [])
   ]
 
-  const groupedModels = allModels.reduce<Record<string, LLM[]>>(
+  const groupedModels = (allModels || []).reduce<Record<string, LLM[]>>(
     (groups, model) => {
       const key = model.provider
       if (!groups[key]) {
@@ -151,17 +151,18 @@ export const ModelSelect: FC<ModelSelectProps> = ({
         />
 
         <div className="max-h-[300px] overflow-auto">
-          {Object.entries(groupedModels).map(([provider, models]) => {
-            const filteredModels = models
+          {Object.entries(groupedModels || {}).map(([provider, models]) => {
+            const filteredModels = (models || [])
               .filter(model => {
                 if (tab === "hosted") return model.provider !== "ollama"
                 if (tab === "local") return model.provider === "ollama"
                 if (tab === "openrouter") return model.provider === "openrouter"
+                return true
               })
               .filter(model =>
-                model.modelName.toLowerCase().includes(search.toLowerCase())
+                model?.modelName?.toLowerCase().includes(search.toLowerCase())
               )
-              .sort((a, b) => a.provider.localeCompare(b.provider))
+              .sort((a, b) => (a.provider || "").localeCompare(b.provider || ""))
 
             if (filteredModels.length === 0) return null
 
@@ -174,7 +175,8 @@ export const ModelSelect: FC<ModelSelectProps> = ({
                 </div>
 
                 <div className="mb-4">
-                  {filteredModels.map(model => {
+                  {(filteredModels || []).map(model => {
+                    if (!model || !model.modelId) return null
                     return (
                       <div
                         key={model.modelId}
