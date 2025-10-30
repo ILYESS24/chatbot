@@ -233,6 +233,17 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
     setProfile(defaultProfile)
     setWorkspaces([defaultWorkspace])
     setSelectedWorkspace(defaultWorkspace)
+    
+    // Initialize chat settings
+    setChatSettings({
+      model: defaultWorkspace.default_model as LLMID,
+      prompt: defaultWorkspace.default_prompt,
+      temperature: defaultWorkspace.default_temperature,
+      contextLength: defaultWorkspace.default_context_length,
+      includeProfileContext: defaultWorkspace.include_profile_context,
+      includeWorkspaceInstructions: defaultWorkspace.include_workspace_instructions,
+      embeddingsProvider: defaultWorkspace.embeddings_provider as "openai" | "local"
+    })
 
     return defaultProfile
   }, [router, setProfile, setWorkspaces, setSelectedWorkspace])

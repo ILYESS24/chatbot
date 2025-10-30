@@ -261,15 +261,27 @@ export const fetchChatResponse = async (
   })
 
   if (!response.ok) {
-    if (response.status === 404 && !isHosted) {
-      toast.error(
-        "Model not found. Make sure you have it downloaded via Ollama."
-      )
+    if (response.status === 404) {
+      if (!isHosted) {
+        toast.error(
+          "Model not found. Make sure you have it downloaded via Ollama."
+        )
+      } else {
+        try {
+          const errorData = await response.json()
+          toast.error(errorData.message || `API endpoint ${url} not found (404)`)
+        } catch {
+          toast.error(`API endpoint ${url} not found (404)`)
+        }
+      }
+    } else {
+      try {
+        const errorData = await response.json()
+        toast.error(errorData.message || `Error: ${response.status}`)
+      } catch {
+        toast.error(`Error: ${response.status}`)
+      }
     }
-
-    const errorData = await response.json()
-
-    toast.error(errorData.message)
 
     setIsGenerating(false)
     setChatMessages(prevMessages => prevMessages.slice(0, -2))
