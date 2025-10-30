@@ -9,7 +9,7 @@ export default function RootLanding() {
         <h1 className="text-3xl font-bold">Chatbot UI</h1>
         <p className="text-muted-foreground">Welcome. Continue to the app.</p>
         <Link
-          href="/en/help"
+          href="/en/guest"
           className="inline-block rounded bg-blue-600 px-4 py-2 font-semibold text-white"
         >
           Enter
