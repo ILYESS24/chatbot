@@ -36,6 +36,9 @@ export const ChatSettingsForm: FC<ChatSettingsFormProps> = ({
   const { profile, models } = useContext(ChatbotUIContext)
 
   // Allow rendering even without profile (no-auth mode)
+  if (!chatSettings) {
+    return <div className="p-4 text-muted-foreground">Loading settings...</div>
+  }
 
   return (
     <div className="space-y-3">
@@ -59,7 +62,7 @@ export const ChatSettingsForm: FC<ChatSettingsFormProps> = ({
           onValueChange={prompt => {
             onChangeChatSettings({ ...chatSettings, prompt })
           }}
-          value={chatSettings.prompt}
+          value={chatSettings.prompt || ""}
           minRows={3}
           maxRows={6}
         />

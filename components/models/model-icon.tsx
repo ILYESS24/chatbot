@@ -25,6 +25,10 @@ export const ModelIcon: FC<ModelIconProps> = ({
 }) => {
   const { theme } = useTheme()
 
+  if (!provider) {
+    return <IconSparkles size={width} />
+  }
+
   switch (provider as ModelProvider) {
     case "openai":
       return (
@@ -45,7 +49,7 @@ export const ModelIcon: FC<ModelIconProps> = ({
             "rounded-sm p-1",
             theme === "dark" ? "bg-white" : "border-DEFAULT border-black"
           )}
-          src={mistral.src}
+          src={mistral?.src || "/providers/mistral.png"}
           alt="Mistral"
           width={width}
           height={height}
@@ -58,7 +62,7 @@ export const ModelIcon: FC<ModelIconProps> = ({
             "rounded-sm p-0",
             theme === "dark" ? "bg-white" : "border-DEFAULT border-black"
           )}
-          src={groq.src}
+          src={groq?.src || "/providers/groq.png"}
           alt="Groq"
           width={width}
           height={height}
@@ -95,8 +99,8 @@ export const ModelIcon: FC<ModelIconProps> = ({
             "rounded-sm p-1",
             theme === "dark" ? "bg-white" : "border-DEFAULT border-black"
           )}
-          src={perplexity.src}
-          alt="Mistral"
+          src={perplexity?.src || "/providers/perplexity.png"}
+          alt="Perplexity"
           width={width}
           height={height}
         />
