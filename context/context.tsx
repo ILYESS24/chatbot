@@ -73,7 +73,7 @@ interface ChatbotUIContext {
   chatMessages: ChatMessage[]
   setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>
   chatSettings: ChatSettings | null
-  setChatSettings: Dispatch<SetStateAction<ChatSettings>>
+  setChatSettings: Dispatch<SetStateAction<ChatSettings | null>>
   selectedChat: Tables<"chats"> | null
   setSelectedChat: Dispatch<SetStateAction<Tables<"chats"> | null>>
   chatFileItems: Tables<"file_items">[]
