@@ -213,7 +213,7 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
     const defaultWorkspace = {
       id: "default",
       name: "Default Workspace",
-      image_path: null,
+      image_path: "",
       default_model: "gpt-4-1106-preview",
       default_prompt: "You are a friendly, helpful AI assistant.",
       default_temperature: 0.5,
