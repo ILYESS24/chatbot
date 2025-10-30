@@ -51,7 +51,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
   }
 
   const allModels = [
-    ...models.map(model => ({
+    ...(models || []).map(model => ({
       modelId: model.model_id as LLMID,
       modelName: model.name,
       provider: "custom" as ModelProvider,
@@ -59,9 +59,9 @@ export const ModelSelect: FC<ModelSelectProps> = ({
       platformLink: "",
       imageInput: false
     })),
-    ...availableHostedModels,
-    ...availableLocalModels,
-    ...availableOpenRouterModels
+    ...(availableHostedModels || []),
+    ...(availableLocalModels || []),
+    ...(availableOpenRouterModels || [])
   ]
 
   const groupedModels = allModels.reduce<Record<string, LLM[]>>(
@@ -80,7 +80,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
     model => model.modelId === selectedModelId
   )
 
-  if (!profile) return null
+  // Allow rendering even without profile (no-auth mode)
 
   return (
     <DropdownMenu
@@ -133,7 +133,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
         align="start"
       >
         <Tabs value={tab} onValueChange={(value: any) => setTab(value)}>
-          {availableLocalModels.length > 0 && (
+          {(availableLocalModels || []).length > 0 && (
             <TabsList defaultValue="hosted" className="grid grid-cols-2">
               <TabsTrigger value="hosted">Hosted</TabsTrigger>
 
@@ -168,7 +168,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
             return (
               <div key={provider}>
                 <div className="mb-1 ml-2 text-xs font-bold tracking-wide opacity-50">
-                  {provider === "openai" && profile.use_azure_openai
+                  {provider === "openai" && profile?.use_azure_openai
                     ? "AZURE OPENAI"
                     : provider.toLocaleUpperCase()}
                 </div>

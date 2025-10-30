@@ -35,7 +35,7 @@ export const ChatSettingsForm: FC<ChatSettingsFormProps> = ({
 }) => {
   const { profile, models } = useContext(ChatbotUIContext)
 
-  if (!profile) return null
+  // Allow rendering even without profile (no-auth mode)
 
   return (
     <div className="space-y-3">
@@ -100,12 +100,12 @@ const AdvancedContent: FC<AdvancedContentProps> = ({
   const { profile, selectedWorkspace, availableOpenRouterModels, models } =
     useContext(ChatbotUIContext)
 
-  const isCustomModel = models.some(
+  const isCustomModel = (models || []).some(
     model => model.model_id === chatSettings.model
   )
 
   function findOpenRouterModel(modelId: string) {
-    return availableOpenRouterModels.find(model => model.modelId === modelId)
+    return (availableOpenRouterModels || []).find(model => model.modelId === modelId)
   }
 
   const MODEL_LIMITS = CHAT_SETTING_LIMITS[chatSettings.model] || {
@@ -156,7 +156,7 @@ const AdvancedContent: FC<AdvancedContentProps> = ({
           min={0}
           max={
             isCustomModel
-              ? models.find(model => model.model_id === chatSettings.model)
+              ? (models || []).find(model => model.model_id === chatSettings.model)
                   ?.context_length
               : MODEL_LIMITS.MAX_CONTEXT_LENGTH
           }
