@@ -222,6 +222,9 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
       include_workspace_instructions: true,
       embeddings_provider: "openai",
       instructions: "",
+      description: "",
+      is_home: false,
+      sharing: "private",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       user_id: "guest"
