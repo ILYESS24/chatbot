@@ -18,6 +18,7 @@ import {
   ChatMessage,
   ChatSettings,
   LLM,
+  LLMID,
   MessageImage,
   OpenRouterLLM,
   WorkspaceImage
