@@ -247,7 +247,7 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
     })
 
     return defaultProfile
-  }, [router, setProfile, setWorkspaces, setSelectedWorkspace])
+  }, [router, setProfile, setWorkspaces, setSelectedWorkspace, setChatSettings])
 
   useEffect(() => {
     ;(async () => {
