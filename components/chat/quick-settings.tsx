@@ -20,7 +20,6 @@ import {
 } from "../ui/dropdown-menu"
 import { Input } from "../ui/input"
 import { QuickSettingOption } from "./quick-setting-option"
-import { set } from "date-fns"
 
 interface QuickSettingsProps {}
 
@@ -149,7 +148,7 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
   }
 
   const checkIfModified = () => {
-    if (!chatSettings) return false
+    if (!chatSettings || (!selectedPreset && !selectedAssistant)) return false
 
     if (selectedPreset) {
       return (
@@ -181,8 +180,8 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
   const isModified = checkIfModified()
 
   const items = [
-    ...presets.map(preset => ({ ...preset, contentType: "presets" })),
-    ...assistants.map(assistant => ({
+    ...(presets || []).map(preset => ({ ...preset, contentType: "presets" })),
+    ...(assistants || []).map(assistant => ({
       ...assistant,
       contentType: "assistants"
     }))
@@ -190,7 +189,7 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
 
   const selectedAssistantImage = selectedPreset
     ? ""
-    : assistantImages.find(
+    : (assistantImages || []).find(
         image => image.path === selectedAssistant?.image_path
       )?.base64 || ""
 
@@ -256,7 +255,7 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
         className="min-w-[300px] max-w-[500px] space-y-4"
         align="start"
       >
-        {presets.length === 0 && assistants.length === 0 ? (
+        {(presets || []).length === 0 && (assistants || []).length === 0 ? (
           <div className="p-8 text-center">No items found.</div>
         ) : (
           <>
@@ -307,7 +306,7 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
                   }
                   image={
                     contentType === "assistants"
-                      ? assistantImages.find(
+                      ? (assistantImages || []).find(
                           image =>
                             image.path ===
                             (item as Tables<"assistants">).image_path
