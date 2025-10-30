@@ -58,7 +58,13 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
   const [loading, setLoading] = useState(true)
 
   const fetchMessages = useCallback(async () => {
-    const fetchedMessages = await getMessagesByChatId(params.chatid as string)
+    // Skip in no-auth mode (no chatid)
+    if (!params.chatid || typeof window === "undefined") {
+      return
+    }
+
+    try {
+      const fetchedMessages = await getMessagesByChatId(params.chatid as string)
 
     const imagePromises: Promise<MessageImage>[] = fetchedMessages.flatMap(
       message =>
@@ -129,11 +135,21 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
     })
 
     setChatMessages(fetchedChatMessages)
+    } catch (error) {
+      // Silently fail in no-auth mode
+      console.error("Error fetching messages:", error)
+    }
   }, [params.chatid, setChatImages, setChatFileItems, setChatFiles, setUseRetrieval, setShowFilesDisplay, setChatMessages])
 
   const fetchChat = useCallback(async () => {
-    const chat = await getChatById(params.chatid as string)
-    if (!chat) return
+    // Skip in no-auth mode (no chatid)
+    if (!params.chatid || typeof window === "undefined") {
+      return
+    }
+
+    try {
+      const chat = await getChatById(params.chatid as string)
+      if (!chat) return
 
     if (chat.assistant_id) {
       const assistant = assistants.find(
@@ -160,20 +176,31 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
       includeWorkspaceInstructions: chat.include_workspace_instructions,
       embeddingsProvider: chat.embeddings_provider as "openai" | "local"
     })
+    } catch (error) {
+      // Silently fail in no-auth mode
+      console.error("Error fetching chat:", error)
+    }
   }, [params.chatid, assistants, setSelectedAssistant, setSelectedTools, setSelectedChat, setChatSettings])
 
   useEffect(() => {
     const fetchData = async () => {
-      await fetchMessages()
-      await fetchChat()
+      try {
+        await fetchMessages()
+        await fetchChat()
 
-      scrollToBottom()
-      setIsAtBottom(true)
+        scrollToBottom()
+        setIsAtBottom(true)
+      } catch (error) {
+        // Silently fail in no-auth mode (no chatid or DB access)
+        console.error("Error fetching chat data:", error)
+      }
     }
 
     if (params.chatid) {
       fetchData().then(() => {
         handleFocusChatInput()
+        setLoading(false)
+      }).catch(() => {
         setLoading(false)
       })
     } else {
