@@ -348,12 +348,39 @@ export const handleCreateChat = async (
   profile: Tables<"profiles">,
   selectedWorkspace: Tables<"workspaces">,
   messageContent: string,
-  selectedAssistant: Tables<"assistants">,
+  selectedAssistant: Tables<"assistants"> | null,
   newMessageFiles: ChatFile[],
   setSelectedChat: React.Dispatch<React.SetStateAction<Tables<"chats"> | null>>,
   setChats: React.Dispatch<React.SetStateAction<Tables<"chats">[]>>,
   setChatFiles: React.Dispatch<React.SetStateAction<ChatFile[]>>
 ) => {
+  // No-auth mode: create chat in memory
+  if (profile.id === "guest" || profile.user_id === "guest") {
+    const createdChat = {
+      id: uuidv4(),
+      user_id: profile.user_id,
+      workspace_id: selectedWorkspace.id,
+      assistant_id: selectedAssistant?.id || null,
+      context_length: chatSettings.contextLength,
+      include_profile_context: chatSettings.includeProfileContext,
+      include_workspace_instructions: chatSettings.includeWorkspaceInstructions,
+      model: chatSettings.model,
+      name: messageContent.substring(0, 100),
+      prompt: chatSettings.prompt,
+      temperature: chatSettings.temperature,
+      embeddings_provider: chatSettings.embeddingsProvider,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    } as Tables<"chats">
+
+    setSelectedChat(createdChat)
+    setChats(chats => [createdChat, ...chats])
+    setChatFiles(prev => [...prev, ...newMessageFiles])
+
+    return createdChat
+  }
+
+  // Auth mode: use database
   const createdChat = await createChat({
     user_id: profile.user_id,
     workspace_id: selectedWorkspace.id,
@@ -401,6 +428,77 @@ export const handleCreateMessages = async (
   setChatImages: React.Dispatch<React.SetStateAction<MessageImage[]>>,
   selectedAssistant: Tables<"assistants"> | null
 ) => {
+  // No-auth mode: create messages in memory
+  if (profile.id === "guest" || profile.user_id === "guest") {
+    let finalChatMessages: ChatMessage[] = []
+
+    if (isRegeneration) {
+      const updatedMessage = {
+        ...chatMessages[chatMessages.length - 1].message,
+        content: generatedText
+      }
+
+      finalChatMessages = [
+        ...chatMessages.slice(0, -1),
+        {
+          message: updatedMessage,
+          fileItems: []
+        }
+      ]
+    } else {
+      const userMessage = {
+        chat_id: currentChat.id,
+        assistant_id: null,
+        user_id: profile.user_id,
+        content: messageContent,
+        model: modelData.modelId,
+        role: "user" as const,
+        sequence_number: chatMessages.length,
+        image_paths: [],
+        id: uuidv4(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+
+      const assistantMessage = {
+        chat_id: currentChat.id,
+        assistant_id: selectedAssistant?.id || null,
+        user_id: profile.user_id,
+        content: generatedText,
+        model: modelData.modelId,
+        role: "assistant" as const,
+        sequence_number: chatMessages.length + 1,
+        image_paths: [],
+        id: uuidv4(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+
+      finalChatMessages = [
+        ...chatMessages,
+        {
+          message: userMessage,
+          fileItems: []
+        },
+        {
+          message: assistantMessage,
+          fileItems: retrievedFileItems.map(fileItem => fileItem.id)
+        }
+      ]
+
+      setChatFileItems(prevFileItems => {
+        const newFileItems = retrievedFileItems.filter(
+          fileItem => !prevFileItems.some(prevItem => prevItem.id === fileItem.id)
+        )
+        return [...prevFileItems, ...newFileItems]
+      })
+    }
+
+    setChatMessages(finalChatMessages)
+    return
+  }
+
+  // Auth mode: use database
   const finalUserMessage: TablesInsert<"messages"> = {
     chat_id: currentChat.id,
     assistant_id: null,

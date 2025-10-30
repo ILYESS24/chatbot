@@ -12,7 +12,6 @@ import {
   fetchOllamaModels,
   fetchOpenRouterModels
 } from "@/lib/models/fetch-models"
-import { supabase } from "@/lib/supabase/browser-client"
 import { Tables } from "@/supabase/types"
 import {
   ChatFile,
@@ -124,49 +123,111 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [toolInUse, setToolInUse] = useState<string>("none")
 
   const fetchStartingData = useCallback(async () => {
-    const session = (await supabase.auth.getSession()).data.session
+    // Optional Supabase: skip when env vars are not set (no-auth mode)
+    const hasSupabase =
+      typeof window !== "undefined" &&
+      !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-    if (session) {
-      const user = session.user
+    if (hasSupabase) {
+      try {
+        const { supabase } = await import("@/lib/supabase/browser-client")
+        const session = (await supabase.auth.getSession()).data.session
 
-      const profile = await getProfileByUserId(user.id)
-      setProfile(profile)
+      if (session) {
+        const user = session.user
 
-      if (!profile.has_onboarded) {
-        return router.push("/setup")
-      }
+        const profile = await getProfileByUserId(user.id)
+        setProfile(profile)
 
-      const workspaces = await getWorkspacesByUserId(user.id)
-      setWorkspaces(workspaces)
-
-      for (const workspace of workspaces) {
-        let workspaceImageUrl = ""
-
-        if (workspace.image_path) {
-          workspaceImageUrl =
-            (await getWorkspaceImageFromStorage(workspace.image_path)) || ""
+        if (!profile.has_onboarded) {
+          return router.push("/setup")
         }
 
-        if (workspaceImageUrl) {
-          const response = await fetch(workspaceImageUrl)
-          const blob = await response.blob()
-          const base64 = await convertBlobToBase64(blob)
+        const workspaces = await getWorkspacesByUserId(user.id)
+        setWorkspaces(workspaces)
 
-          setWorkspaceImages(prev => [
-            ...prev,
-            {
-              workspaceId: workspace.id,
-              path: workspace.image_path,
-              base64: base64,
-              url: workspaceImageUrl
-            }
-          ])
+        for (const workspace of workspaces) {
+          let workspaceImageUrl = ""
+
+          if (workspace.image_path) {
+            workspaceImageUrl =
+              (await getWorkspaceImageFromStorage(workspace.image_path)) || ""
+          }
+
+          if (workspaceImageUrl) {
+            const response = await fetch(workspaceImageUrl)
+            const blob = await response.blob()
+            const base64 = await convertBlobToBase64(blob)
+
+            setWorkspaceImages(prev => [
+              ...prev,
+              {
+                workspaceId: workspace.id,
+                path: workspace.image_path,
+                base64: base64,
+                url: workspaceImageUrl
+              }
+            ])
+          }
         }
-      }
 
-      return profile
+        return profile
+      }
+      } catch (e) {
+        // Supabase not available - fall through to no-auth mode
+      }
     }
-  }, [router])
+
+    // No-auth mode: create default profile and workspace in memory
+    const defaultProfile = {
+      id: "guest",
+      user_id: "guest",
+      display_name: "Guest",
+      has_onboarded: true,
+      image_path: null,
+      image_url: null,
+      bio: null,
+      openai_api_key: null,
+      anthropic_api_key: null,
+      google_gemini_api_key: null,
+      mistral_api_key: null,
+      perplexity_api_key: null,
+      openrouter_api_key: null,
+      use_azure_openai: false,
+      azure_openai_endpoint: null,
+      azure_openai_35_turbo_id: null,
+      azure_openai_45_turbo_id: null,
+      azure_openai_45_vision_id: null,
+      azure_openai_embeddings_id: null,
+      use_google_gemini: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    } as Tables<"profiles">
+
+    const defaultWorkspace = {
+      id: "default",
+      name: "Default Workspace",
+      image_path: null,
+      default_model: "gpt-4-1106-preview",
+      default_prompt: "You are a friendly, helpful AI assistant.",
+      default_temperature: 0.5,
+      default_context_length: 4096,
+      include_profile_context: true,
+      include_workspace_instructions: true,
+      embeddings_provider: "openai",
+      instructions: "",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      user_id: "guest"
+    } as Tables<"workspaces">
+
+    setProfile(defaultProfile)
+    setWorkspaces([defaultWorkspace])
+    setSelectedWorkspace(defaultWorkspace)
+
+    return defaultProfile
+  }, [router, setProfile, setWorkspaces, setSelectedWorkspace])
 
   useEffect(() => {
     ;(async () => {

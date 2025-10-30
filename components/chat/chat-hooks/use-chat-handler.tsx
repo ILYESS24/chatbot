@@ -344,24 +344,41 @@ export const useChatHandler = () => {
           profile!,
           selectedWorkspace!,
           messageContent,
-          selectedAssistant!,
+          selectedAssistant || null,
           newMessageFiles,
           setSelectedChat,
           setChats,
           setChatFiles
         )
       } else {
-        const updatedChat = await updateChat(currentChat.id, {
-          updated_at: new Date().toISOString()
-        })
+        // No-auth mode: update chat in memory
+        if (profile!.id === "guest" || profile!.user_id === "guest") {
+          const updatedChat = {
+            ...currentChat,
+            updated_at: new Date().toISOString()
+          }
 
-        setChats(prevChats => {
-          const updatedChats = prevChats.map(prevChat =>
-            prevChat.id === updatedChat.id ? updatedChat : prevChat
-          )
+          setSelectedChat(updatedChat)
+          setChats(prevChats => {
+            const updatedChats = prevChats.map(prevChat =>
+              prevChat.id === updatedChat.id ? updatedChat : prevChat
+            )
+            return updatedChats
+          })
+        } else {
+          // Auth mode: update in database
+          const updatedChat = await updateChat(currentChat.id, {
+            updated_at: new Date().toISOString()
+          })
 
-          return updatedChats
-        })
+          setChats(prevChats => {
+            const updatedChats = prevChats.map(prevChat =>
+              prevChat.id === updatedChat.id ? updatedChat : prevChat
+            )
+
+            return updatedChats
+          })
+        }
       }
 
       await handleCreateMessages(
