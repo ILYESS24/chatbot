@@ -76,8 +76,8 @@ export const ModelSelect: FC<ModelSelectProps> = ({
     {}
   )
 
-  const selectedModel = allModels.find(
-    model => model.modelId === selectedModelId
+  const selectedModel = (allModels || []).find(
+    model => model?.modelId === selectedModelId
   )
 
   // Allow rendering even without profile (no-auth mode)
@@ -93,9 +93,9 @@ export const ModelSelect: FC<ModelSelectProps> = ({
       <DropdownMenuTrigger
         className="bg-background w-full justify-start border-2 px-3 py-5"
         asChild
-        disabled={allModels.length === 0}
+        disabled={(allModels || []).length === 0}
       >
-        {allModels.length === 0 ? (
+        {(allModels || []).length === 0 ? (
           <div className="rounded text-sm font-bold">
             Unlock models by entering API keys in your profile settings.
           </div>
