@@ -20,13 +20,44 @@ import {
 } from "../ui/dropdown-menu"
 import { Input } from "../ui/input"
 import { QuickSettingOption } from "./quick-setting-option"
+import { QuickSettingsErrorBoundary } from "./quick-settings-error-boundary"
 
 interface QuickSettingsProps {}
 
 export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
   const { t } = useTranslation()
 
-  useHotkey("p", () => setIsOpen(prevState => !prevState))
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  useHotkey("p", () => {
+    try {
+      setIsOpen(prevState => !prevState)
+    } catch (e) {
+      console.error("Hotkey error:", e)
+    }
+  })
+
+  let contextData
+  try {
+    contextData = useContext(ChatbotUIContext)
+  } catch (error) {
+    console.error("Context error:", error)
+    return (
+      <Button variant="ghost" className="flex space-x-3 text-lg" disabled>
+        Quick Settings
+      </Button>
+    )
+  }
+
+  if (!contextData) {
+    return (
+      <Button variant="ghost" className="flex space-x-3 text-lg" disabled>
+        Loading...
+      </Button>
+    )
+  }
 
   const {
     presets,
@@ -43,19 +74,19 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
     setShowFilesDisplay,
     selectedWorkspace,
     profile
-  } = useContext(ChatbotUIContext)
+  } = contextData
 
   const inputRef = useRef<HTMLInputElement>(null)
-
-  const [isOpen, setIsOpen] = useState(false)
-  const [search, setSearch] = useState("")
-  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => {
-        inputRef.current?.focus()
-      }, 100) // FIX: hacky
+        try {
+          inputRef.current?.focus()
+        } catch (e) {
+          console.error("Focus error:", e)
+        }
+      }, 100)
     }
   }, [isOpen])
 
@@ -63,89 +94,93 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
     item: Tables<"presets"> | Tables<"assistants"> | null,
     contentType: "presets" | "assistants" | "remove"
   ) => {
-    console.log({ item, contentType })
-    if (contentType === "assistants" && item) {
-      setSelectedAssistant(item as Tables<"assistants">)
-      setLoading(true)
-      
-      // Skip DB calls in no-auth mode
-      if (profile?.id === "guest" || profile?.user_id === "guest") {
-        setSelectedTools([])
-        setChatFiles([])
-        setLoading(false)
-        setSelectedPreset(null)
-      } else {
-        try {
-          let allFiles = []
-          const assistantFiles = (await getAssistantFilesByAssistantId(item.id))
-            .files
-          allFiles = [...assistantFiles]
-          const assistantCollections = (
-            await getAssistantCollectionsByAssistantId(item.id)
-          ).collections
-          for (const collection of assistantCollections) {
-            const collectionFiles = (
-              await getCollectionFilesByCollectionId(collection.id)
-            ).files
-            allFiles = [...allFiles, ...collectionFiles]
+    try {
+      if (contentType === "assistants" && item) {
+        setSelectedAssistant?.(item as Tables<"assistants">)
+        setLoading(true)
+        
+        // Skip DB calls in no-auth mode
+        if (profile?.id === "guest" || profile?.user_id === "guest") {
+          setSelectedTools?.([])
+          setChatFiles?.([])
+          setLoading(false)
+          setSelectedPreset?.(null)
+        } else {
+          try {
+            let allFiles = []
+            const assistantFiles = (await getAssistantFilesByAssistantId(item.id))
+              .files
+            allFiles = [...assistantFiles]
+            const assistantCollections = (
+              await getAssistantCollectionsByAssistantId(item.id)
+            ).collections
+            for (const collection of assistantCollections) {
+              const collectionFiles = (
+                await getCollectionFilesByCollectionId(collection.id)
+              ).files
+              allFiles = [...allFiles, ...collectionFiles]
+            }
+            const assistantTools = (await getAssistantToolsByAssistantId(item.id))
+              .tools
+            setSelectedTools?.(assistantTools)
+            setChatFiles?.(
+              allFiles.map(file => ({
+                id: file.id,
+                name: file.name,
+                type: file.type,
+                file: null
+              }))
+            )
+            if (allFiles.length > 0) setShowFilesDisplay?.(true)
+          } catch (error) {
+            console.error("Error loading assistant data:", error)
+            setSelectedTools?.([])
+            setChatFiles?.([])
           }
-          const assistantTools = (await getAssistantToolsByAssistantId(item.id))
-            .tools
-          setSelectedTools(assistantTools)
-          setChatFiles(
-            allFiles.map(file => ({
-              id: file.id,
-              name: file.name,
-              type: file.type,
-              file: null
-            }))
-          )
-          if (allFiles.length > 0) setShowFilesDisplay(true)
-        } catch (error) {
-          console.error("Error loading assistant data:", error)
-          setSelectedTools([])
-          setChatFiles([])
+          setLoading(false)
+          setSelectedPreset?.(null)
         }
-        setLoading(false)
-        setSelectedPreset(null)
+      } else if (contentType === "presets" && item) {
+        setSelectedPreset?.(item as Tables<"presets">)
+        setSelectedAssistant?.(null)
+        setChatFiles?.([])
+        setSelectedTools?.([])
+      } else {
+        setSelectedPreset?.(null)
+        setSelectedAssistant?.(null)
+        setChatFiles?.([])
+        setSelectedTools?.([])
+        if (selectedWorkspace) {
+          setChatSettings?.({
+            model: selectedWorkspace.default_model as LLMID,
+            prompt: selectedWorkspace.default_prompt || "",
+            temperature: selectedWorkspace.default_temperature ?? 0.7,
+            contextLength: selectedWorkspace.default_context_length ?? 4096,
+            includeProfileContext: selectedWorkspace.include_profile_context ?? false,
+            includeWorkspaceInstructions:
+              selectedWorkspace.include_workspace_instructions ?? false,
+            embeddingsProvider: (selectedWorkspace.embeddings_provider as
+              | "openai"
+              | "local") || "openai"
+          })
+        }
+        return
       }
-    } else if (contentType === "presets" && item) {
-      setSelectedPreset(item as Tables<"presets">)
-      setSelectedAssistant(null)
-      setChatFiles([])
-      setSelectedTools([])
-    } else {
-      setSelectedPreset(null)
-      setSelectedAssistant(null)
-      setChatFiles([])
-      setSelectedTools([])
-      if (selectedWorkspace) {
-        setChatSettings({
-          model: selectedWorkspace.default_model as LLMID,
-          prompt: selectedWorkspace.default_prompt,
-          temperature: selectedWorkspace.default_temperature,
-          contextLength: selectedWorkspace.default_context_length,
-          includeProfileContext: selectedWorkspace.include_profile_context,
-          includeWorkspaceInstructions:
-            selectedWorkspace.include_workspace_instructions,
-          embeddingsProvider: selectedWorkspace.embeddings_provider as
-            | "openai"
-            | "local"
+
+      if (item && item.model) {
+        setChatSettings?.({
+          model: item.model as LLMID,
+          prompt: item.prompt || "",
+          temperature: item.temperature ?? 0.7,
+          contextLength: item.context_length ?? 4096,
+          includeProfileContext: item.include_profile_context ?? false,
+          includeWorkspaceInstructions: item.include_workspace_instructions ?? false,
+          embeddingsProvider: (item.embeddings_provider as "openai" | "local") || "openai"
         })
       }
-      return
-    }
-
-    if (item && item.model) {
-      setChatSettings({
-        model: item.model as LLMID,
-        prompt: item.prompt || "",
-        temperature: item.temperature ?? 0.7,
-        contextLength: item.context_length ?? 4096,
-        includeProfileContext: item.include_profile_context ?? false,
-        includeWorkspaceInstructions: item.include_workspace_instructions ?? false,
-        embeddingsProvider: (item.embeddings_provider as "openai" | "local") || "openai"
-      })
+    } catch (error) {
+      console.error("Error in handleSelectQuickSetting:", error)
+      setLoading(false)
     }
   }
 
@@ -182,10 +217,10 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
   const isModified = checkIfModified()
 
   const items = [
-    ...(presets || []).map(preset => ({ ...preset, contentType: "presets" })),
+    ...(presets || []).map(preset => ({ ...preset, contentType: "presets" as const })),
     ...(assistants || []).map(assistant => ({
       ...assistant,
-      contentType: "assistants"
+      contentType: "assistants" as const
     }))
   ]
 
@@ -195,137 +230,166 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
         image => image.path === selectedAssistant?.image_path
       )?.base64 || ""
 
-  const modelDetails = LLM_LIST.find(
-    model => model.modelId === selectedPreset?.model
-  )
+  const modelDetails = selectedPreset?.model
+    ? LLM_LIST.find(model => model.modelId === selectedPreset.model)
+    : null
+
+  // Early return if critical data is missing
+  if (!chatSettings) {
+    return (
+      <Button variant="ghost" className="flex space-x-3 text-lg" disabled>
+        Loading...
+      </Button>
+    )
+  }
 
   return (
-    <DropdownMenu
-      open={isOpen}
-      onOpenChange={isOpen => {
-        setIsOpen(isOpen)
-        setSearch("")
-      }}
-    >
-      <DropdownMenuTrigger asChild className="max-w-[400px]" disabled={loading}>
-        <Button variant="ghost" className="flex space-x-3 text-lg">
-          {selectedPreset && (
-            <ModelIcon
-              provider={modelDetails?.provider || "custom"}
-              width={32}
-              height={32}
-            />
-          )}
-
-          {selectedAssistant &&
-            (selectedAssistantImage ? (
-              <Image
-                className="rounded"
-                src={selectedAssistantImage}
-                alt="Assistant"
-                width={28}
-                height={28}
-              />
-            ) : (
-              <IconRobotFace
-                className="bg-primary text-secondary border-primary rounded border-DEFAULT p-1"
-                size={28}
-              />
-            ))}
-
-          {loading ? (
-            <div className="animate-pulse">Loading assistant...</div>
-          ) : (
-            <>
-              <div className="overflow-hidden text-ellipsis">
-                {isModified &&
-                  (selectedPreset || selectedAssistant) &&
-                  "Modified "}
-
-                {selectedPreset?.name ||
-                  selectedAssistant?.name ||
-                  t("Quick Settings")}
-              </div>
-
-              <IconChevronDown className="ml-1" />
-            </>
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-
-      <DropdownMenuContent
-        className="min-w-[300px] max-w-[500px] space-y-4"
-        align="start"
+    <QuickSettingsErrorBoundary>
+      <DropdownMenu
+        open={isOpen}
+        onOpenChange={isOpen => {
+          try {
+            setIsOpen(isOpen)
+            setSearch("")
+          } catch (e) {
+            console.error("onOpenChange error:", e)
+          }
+        }}
       >
-        {(presets || []).length === 0 && (assistants || []).length === 0 ? (
-          <div className="p-8 text-center">No items found.</div>
-        ) : (
-          <>
-            <Input
-              ref={inputRef}
-              className="w-full"
-              placeholder="Search..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onKeyDown={e => e.stopPropagation()}
-            />
-
-            {!!(selectedPreset || selectedAssistant) && (
-              <QuickSettingOption
-                contentType={selectedPreset ? "presets" : "assistants"}
-                isSelected={true}
-                item={
-                  selectedPreset ||
-                  (selectedAssistant as
-                    | Tables<"presets">
-                    | Tables<"assistants">)
-                }
-                onSelect={() => {
-                  handleSelectQuickSetting(null, "remove")
-                }}
-                image={selectedPreset ? "" : selectedAssistantImage}
+        <DropdownMenuTrigger asChild className="max-w-[400px]" disabled={loading}>
+          <Button variant="ghost" className="flex space-x-3 text-lg">
+            {selectedPreset && (
+              <ModelIcon
+                provider={modelDetails?.provider || "custom"}
+                width={32}
+                height={32}
               />
             )}
 
-            {items
-              .filter(
-                item =>
-                  item &&
-                  item.name &&
-                  item.name.toLowerCase().includes(search.toLowerCase()) &&
-                  item.id !== selectedPreset?.id &&
-                  item.id !== selectedAssistant?.id
-              )
-              .map(({ contentType, ...item }) => {
-                if (!item || !item.id) return null
-                return (
-                <QuickSettingOption
-                  key={item.id}
-                  contentType={contentType as "presets" | "assistants"}
-                  isSelected={false}
-                  item={item}
-                  onSelect={() =>
-                    handleSelectQuickSetting(
-                      item,
-                      contentType as "presets" | "assistants"
-                    )
-                  }
-                  image={
-                    contentType === "assistants"
-                      ? (assistantImages || []).find(
-                          image =>
-                            image.path ===
-                            (item as Tables<"assistants">).image_path
-                        )?.base64 || ""
-                      : ""
-                  }
+            {selectedAssistant &&
+              (selectedAssistantImage ? (
+                <Image
+                  className="rounded"
+                  src={selectedAssistantImage}
+                  alt="Assistant"
+                  width={28}
+                  height={28}
                 />
+              ) : (
+                <IconRobotFace
+                  className="bg-primary text-secondary border-primary rounded border-DEFAULT p-1"
+                  size={28}
+                />
+              ))}
+
+            {loading ? (
+              <div className="animate-pulse">Loading assistant...</div>
+            ) : (
+              <>
+                <div className="overflow-hidden text-ellipsis">
+                  {isModified &&
+                    (selectedPreset || selectedAssistant) &&
+                    "Modified "}
+
+                  {selectedPreset?.name ||
+                    selectedAssistant?.name ||
+                    t("Quick Settings")}
+                </div>
+
+                <IconChevronDown className="ml-1" />
+              </>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent
+          className="min-w-[300px] max-w-[500px] space-y-4"
+          align="start"
+        >
+          {(presets || []).length === 0 && (assistants || []).length === 0 ? (
+            <div className="p-8 text-center">No items found.</div>
+          ) : (
+            <>
+              <Input
+                ref={inputRef}
+                className="w-full"
+                placeholder="Search..."
+                value={search}
+                onChange={e => {
+                  try {
+                    setSearch(e.target.value)
+                  } catch (e) {
+                    console.error("Search onChange error:", e)
+                  }
+                }}
+                onKeyDown={e => e.stopPropagation()}
+              />
+
+              {!!(selectedPreset || selectedAssistant) && selectedPreset || selectedAssistant ? (
+                <QuickSettingOption
+                  contentType={selectedPreset ? "presets" : "assistants"}
+                  isSelected={true}
+                  item={
+                    (selectedPreset ||
+                      selectedAssistant) as
+                      | Tables<"presets">
+                      | Tables<"assistants">
+                  }
+                  onSelect={() => {
+                    try {
+                      handleSelectQuickSetting(null, "remove")
+                    } catch (e) {
+                      console.error("Remove quick setting error:", e)
+                    }
+                  }}
+                  image={selectedPreset ? "" : selectedAssistantImage}
+                />
+              ) : null}
+
+              {items
+                .filter(
+                  item =>
+                    item &&
+                    item.name &&
+                    item.name.toLowerCase().includes(search.toLowerCase()) &&
+                    item.id !== selectedPreset?.id &&
+                    item.id !== selectedAssistant?.id
                 )
-              })
-              .filter(Boolean)}
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+                .map(({ contentType, ...item }) => {
+                  if (!item || !item.id) return null
+                  return (
+                    <QuickSettingOption
+                      key={item.id}
+                      contentType={contentType as "presets" | "assistants"}
+                      isSelected={false}
+                      item={item}
+                      onSelect={() => {
+                        try {
+                          handleSelectQuickSetting(
+                            item,
+                            contentType as "presets" | "assistants"
+                          )
+                        } catch (e) {
+                          console.error("Select quick setting error:", e)
+                        }
+                      }}
+                      image={
+                        contentType === "assistants"
+                          ? (assistantImages || []).find(
+                              image =>
+                                image.path ===
+                                (item as Tables<"assistants">).image_path
+                            )?.base64 || ""
+                          : ""
+                      }
+                    />
+                  )
+                })
+                .filter(Boolean)}
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </QuickSettingsErrorBoundary>
   )
 }
