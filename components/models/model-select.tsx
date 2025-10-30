@@ -66,6 +66,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 
   const groupedModels = (allModels || []).reduce<Record<string, LLM[]>>(
     (groups, model) => {
+      if (!model || !model.provider) return groups
       const key = model.provider
       if (!groups[key]) {
         groups[key] = []
@@ -154,6 +155,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
           {Object.entries(groupedModels || {}).map(([provider, models]) => {
             const filteredModels = (models || [])
               .filter(model => {
+                if (!model || !model.provider) return false
                 if (tab === "hosted") return model.provider !== "ollama"
                 if (tab === "local") return model.provider === "ollama"
                 if (tab === "openrouter") return model.provider === "openrouter"
@@ -162,7 +164,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
               .filter(model =>
                 model?.modelName?.toLowerCase().includes(search.toLowerCase())
               )
-              .sort((a, b) => (a.provider || "").localeCompare(b.provider || ""))
+              .sort((a, b) => (a?.provider || "").localeCompare(b?.provider || ""))
 
             if (filteredModels.length === 0) return null
 
