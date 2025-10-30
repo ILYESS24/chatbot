@@ -136,15 +136,17 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
       return
     }
 
-    setChatSettings({
-      model: item.model as LLMID,
-      prompt: item.prompt,
-      temperature: item.temperature,
-      contextLength: item.context_length,
-      includeProfileContext: item.include_profile_context,
-      includeWorkspaceInstructions: item.include_workspace_instructions,
-      embeddingsProvider: item.embeddings_provider as "openai" | "local"
-    })
+    if (item && item.model) {
+      setChatSettings({
+        model: item.model as LLMID,
+        prompt: item.prompt || "",
+        temperature: item.temperature ?? 0.7,
+        contextLength: item.context_length ?? 4096,
+        includeProfileContext: item.include_profile_context ?? false,
+        includeWorkspaceInstructions: item.include_workspace_instructions ?? false,
+        embeddingsProvider: (item.embeddings_provider as "openai" | "local") || "openai"
+      })
+    }
   }
 
   const checkIfModified = () => {
@@ -288,11 +290,15 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
             {items
               .filter(
                 item =>
+                  item &&
+                  item.name &&
                   item.name.toLowerCase().includes(search.toLowerCase()) &&
                   item.id !== selectedPreset?.id &&
                   item.id !== selectedAssistant?.id
               )
-              .map(({ contentType, ...item }) => (
+              .map(({ contentType, ...item }) => {
+                if (!item || !item.id) return null
+                return (
                 <QuickSettingOption
                   key={item.id}
                   contentType={contentType as "presets" | "assistants"}
@@ -314,7 +320,9 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
                       : ""
                   }
                 />
-              ))}
+                )
+              })
+              .filter(Boolean)}
           </>
         )}
       </DropdownMenuContent>

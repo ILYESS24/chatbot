@@ -21,7 +21,11 @@ export const QuickSettingOption: FC<QuickSettingOptionProps> = ({
   onSelect,
   image
 }) => {
-  const modelDetails = LLM_LIST.find(model => model.modelId === item.model)
+  if (!item) return null
+
+  const modelDetails = item.model
+    ? LLM_LIST.find(model => model.modelId === item.model)
+    : null
 
   return (
     <DropdownMenuItem
@@ -54,7 +58,7 @@ export const QuickSettingOption: FC<QuickSettingOptionProps> = ({
       </div>
 
       <div className="ml-4 flex grow flex-col space-y-1">
-        <div className="text-md font-bold">{item.name}</div>
+        <div className="text-md font-bold">{item.name || "Unnamed"}</div>
 
         {item.description && (
           <div className="text-sm font-light">{item.description}</div>
