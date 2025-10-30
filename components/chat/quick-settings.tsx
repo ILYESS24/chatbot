@@ -26,6 +26,8 @@ interface QuickSettingsProps {}
 
 export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
   const { t } = useTranslation()
+  const contextData = useContext(ChatbotUIContext)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState("")
@@ -38,18 +40,6 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
       console.error("Hotkey error:", e)
     }
   })
-
-  let contextData
-  try {
-    contextData = useContext(ChatbotUIContext)
-  } catch (error) {
-    console.error("Context error:", error)
-    return (
-      <Button variant="ghost" className="flex space-x-3 text-lg" disabled>
-        Quick Settings
-      </Button>
-    )
-  }
 
   if (!contextData) {
     return (
@@ -75,8 +65,6 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
     selectedWorkspace,
     profile
   } = contextData
-
-  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (isOpen) {
