@@ -49,7 +49,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({}) => {
   if (!chatSettings) return null
 
   const allModels = [
-    ...models.map(model => ({
+    ...(models || []).map(model => ({
       modelId: model.model_id as LLMID,
       modelName: model.name,
       provider: "custom" as ModelProvider,
@@ -57,9 +57,9 @@ export const ChatSettings: FC<ChatSettingsProps> = ({}) => {
       platformLink: "",
       imageInput: false
     })),
-    ...availableHostedModels,
-    ...availableLocalModels,
-    ...availableOpenRouterModels
+    ...(availableHostedModels || []),
+    ...(availableLocalModels || []),
+    ...(availableOpenRouterModels || [])
   ]
 
   const fullModel = allModels.find(llm => llm.modelId === chatSettings.model)

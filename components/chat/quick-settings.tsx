@@ -42,7 +42,8 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
     setChatFiles,
     setSelectedTools,
     setShowFilesDisplay,
-    selectedWorkspace
+    selectedWorkspace,
+    profile
   } = useContext(ChatbotUIContext)
 
   const inputRef = useRef<HTMLInputElement>(null)
@@ -67,33 +68,48 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
     if (contentType === "assistants" && item) {
       setSelectedAssistant(item as Tables<"assistants">)
       setLoading(true)
-      let allFiles = []
-      const assistantFiles = (await getAssistantFilesByAssistantId(item.id))
-        .files
-      allFiles = [...assistantFiles]
-      const assistantCollections = (
-        await getAssistantCollectionsByAssistantId(item.id)
-      ).collections
-      for (const collection of assistantCollections) {
-        const collectionFiles = (
-          await getCollectionFilesByCollectionId(collection.id)
-        ).files
-        allFiles = [...allFiles, ...collectionFiles]
+      
+      // Skip DB calls in no-auth mode
+      if (profile?.id === "guest" || profile?.user_id === "guest") {
+        setSelectedTools([])
+        setChatFiles([])
+        setLoading(false)
+        setSelectedPreset(null)
+      } else {
+        try {
+          let allFiles = []
+          const assistantFiles = (await getAssistantFilesByAssistantId(item.id))
+            .files
+          allFiles = [...assistantFiles]
+          const assistantCollections = (
+            await getAssistantCollectionsByAssistantId(item.id)
+          ).collections
+          for (const collection of assistantCollections) {
+            const collectionFiles = (
+              await getCollectionFilesByCollectionId(collection.id)
+            ).files
+            allFiles = [...allFiles, ...collectionFiles]
+          }
+          const assistantTools = (await getAssistantToolsByAssistantId(item.id))
+            .tools
+          setSelectedTools(assistantTools)
+          setChatFiles(
+            allFiles.map(file => ({
+              id: file.id,
+              name: file.name,
+              type: file.type,
+              file: null
+            }))
+          )
+          if (allFiles.length > 0) setShowFilesDisplay(true)
+        } catch (error) {
+          console.error("Error loading assistant data:", error)
+          setSelectedTools([])
+          setChatFiles([])
+        }
+        setLoading(false)
+        setSelectedPreset(null)
       }
-      const assistantTools = (await getAssistantToolsByAssistantId(item.id))
-        .tools
-      setSelectedTools(assistantTools)
-      setChatFiles(
-        allFiles.map(file => ({
-          id: file.id,
-          name: file.name,
-          type: file.type,
-          file: null
-        }))
-      )
-      if (allFiles.length > 0) setShowFilesDisplay(true)
-      setLoading(false)
-      setSelectedPreset(null)
     } else if (contentType === "presets" && item) {
       setSelectedPreset(item as Tables<"presets">)
       setSelectedAssistant(null)
