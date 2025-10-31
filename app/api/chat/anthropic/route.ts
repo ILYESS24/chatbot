@@ -84,28 +84,70 @@ export async function POST(request: NextRequest) {
         )
       }
     } catch (error: any) {
-      console.error("Error calling Anthropic API:", error)
+      console.error("Error calling Anthropic API:", {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+        type: error.type,
+        stack: error.stack
+      })
+
+      let errorMessage = error.message || "An error occurred while calling the Anthropic API"
+      let errorCode = error.status || 500
+
+      if (errorMessage.toLowerCase().includes("api key") || errorMessage.toLowerCase().includes("authentication") || errorCode === 401) {
+        errorMessage = "Anthropic API Key is invalid. Please check your API key in settings."
+        errorCode = 401
+      } else if (errorMessage.toLowerCase().includes("rate limit") || errorCode === 429) {
+        errorMessage = "Rate limit exceeded. Please wait a moment and try again."
+        errorCode = 429
+      } else if (errorMessage.toLowerCase().includes("context") || errorCode === 400) {
+        errorMessage = "Message too long. Please reduce the message length or context size."
+        errorCode = 400
+      }
+
       return new NextResponse(
         JSON.stringify({
-          message: "An error occurred while calling the Anthropic API"
+          message: errorMessage,
+          error: process.env.NODE_ENV === "development" ? error.message : undefined
         }),
-        { status: 500 }
+        {
+          status: errorCode,
+          headers: { "Content-Type": "application/json" }
+        }
       )
     }
   } catch (error: any) {
-    let errorMessage = error.message || "An unexpected error occurred"
-    const errorCode = error.status || 500
+    console.error("Anthropic Route Error:", {
+      message: error.message,
+      status: error.status,
+      code: error.code,
+      type: error.type,
+      stack: error.stack
+    })
 
-    if (errorMessage.toLowerCase().includes("api key not found")) {
-      errorMessage =
-        "Anthropic API Key not found. Please set it in your profile settings."
+    let errorMessage = error.message || "An unexpected server error occurred"
+    let errorCode = error.status || 500
+
+    if (errorMessage.toLowerCase().includes("api key not found") || errorMessage.toLowerCase().includes("invalid api key")) {
+      errorMessage = "Anthropic API Key not found or invalid. Please check your API key in settings."
+      errorCode = 401
     } else if (errorCode === 401) {
-      errorMessage =
-        "Anthropic API Key is incorrect. Please fix it in your profile settings."
+      errorMessage = "Anthropic API Key is incorrect. Please fix it in your profile settings."
+      errorCode = 401
+    } else if (!error.message) {
+      errorMessage = "An unexpected error occurred while processing your request. Please try again."
     }
 
-    return new NextResponse(JSON.stringify({ message: errorMessage }), {
-      status: errorCode
-    })
+    return new NextResponse(
+      JSON.stringify({
+        message: errorMessage,
+        error: process.env.NODE_ENV === "development" ? error.message : undefined
+      }),
+      {
+        status: errorCode,
+        headers: { "Content-Type": "application/json" }
+      }
+    )
   }
 }

@@ -60,18 +60,20 @@ export async function getServerProfile() {
       }
     )
 
-    const user = (await supabase.auth.getUser()).data.user
-    if (!user) {
+    const { data: userData, error: userError } = await supabase.auth.getUser()
+    if (userError || !userData.user) {
+      console.error("Supabase auth error:", userError)
       throw new Error("User not found")
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", userData.user.id)
       .single()
 
-    if (!profile) {
+    if (profileError || !profile) {
+      console.error("Profile fetch error:", profileError)
       throw new Error("Profile not found")
     }
 
@@ -79,6 +81,10 @@ export async function getServerProfile() {
 
     return profileWithKeys
   } catch (error: any) {
+    console.error("getServerProfile error:", {
+      message: error.message,
+      stack: error.stack
+    })
     // Fallback to no-auth mode if Supabase fails
     const guestProfile = {
       id: "guest",

@@ -40,19 +40,43 @@ export async function POST(request: Request) {
 
     return new StreamingTextResponse(stream)
   } catch (error: any) {
-    let errorMessage = error.message || "An unexpected error occurred"
-    const errorCode = error.status || 500
+    console.error("OpenAI API Error:", {
+      message: error.message,
+      status: error.status,
+      code: error.code,
+      type: error.type,
+      stack: error.stack
+    })
 
-    if (errorMessage.toLowerCase().includes("api key not found")) {
-      errorMessage =
-        "OpenAI API Key not found. Please set it in your profile settings."
-    } else if (errorMessage.toLowerCase().includes("incorrect api key")) {
-      errorMessage =
-        "OpenAI API Key is incorrect. Please fix it in your profile settings."
+    let errorMessage = error.message || "An unexpected server error occurred"
+    let errorCode = error.status || 500
+
+    // Handle specific OpenAI API errors
+    if (errorMessage.toLowerCase().includes("api key not found") || errorMessage.toLowerCase().includes("invalid api key")) {
+      errorMessage = "OpenAI API Key not found or invalid. Please check your API key in settings."
+      errorCode = 401
+    } else if (errorMessage.toLowerCase().includes("incorrect api key") || errorCode === 401) {
+      errorMessage = "OpenAI API Key is incorrect. Please fix it in your profile settings."
+      errorCode = 401
+    } else if (errorMessage.toLowerCase().includes("rate limit") || errorCode === 429) {
+      errorMessage = "Rate limit exceeded. Please wait a moment and try again."
+      errorCode = 429
+    } else if (errorMessage.toLowerCase().includes("context length") || errorCode === 400) {
+      errorMessage = "Message too long. Please reduce the message length or context size."
+      errorCode = 400
+    } else if (!error.message) {
+      errorMessage = "An unexpected error occurred while processing your request. Please try again."
     }
 
-    return new Response(JSON.stringify({ message: errorMessage }), {
-      status: errorCode
-    })
+    return new Response(
+      JSON.stringify({ 
+        message: errorMessage,
+        error: process.env.NODE_ENV === "development" ? error.message : undefined
+      }),
+      {
+        status: errorCode,
+        headers: { "Content-Type": "application/json" }
+      }
+    )
   }
 }
