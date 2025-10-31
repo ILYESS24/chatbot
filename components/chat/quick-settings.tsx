@@ -20,7 +20,6 @@ import {
 } from "../ui/dropdown-menu"
 import { Input } from "../ui/input"
 import { QuickSettingOption } from "./quick-setting-option"
-import { QuickSettingsErrorBoundary } from "./quick-settings-error-boundary"
 
 interface QuickSettingsProps {}
 
@@ -313,7 +312,7 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
                 onKeyDown={e => e.stopPropagation()}
               />
 
-              {!!(selectedPreset || selectedAssistant) && (selectedPreset || selectedAssistant) ? (
+              {(selectedPreset || selectedAssistant) ? (
                 <QuickSettingOption
                   contentType={selectedPreset ? "presets" : "assistants"}
                   isSelected={true}
