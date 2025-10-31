@@ -24,10 +24,10 @@ import { QuickSettingOption } from "./quick-setting-option"
 interface QuickSettingsProps {}
 
 export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
+  // All hooks must be called unconditionally first
   const { t } = useTranslation()
   const contextData = useContext(ChatbotUIContext)
   const inputRef = useRef<HTMLInputElement>(null)
-
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(false)
@@ -46,12 +46,13 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
         try {
           inputRef.current?.focus()
         } catch (e) {
-          console.error("Focus error:", e)
+          // Silent fail
         }
       }, 100)
     }
   }, [isOpen])
 
+  // Early return if context is not ready
   if (!contextData) {
     return (
       <Button variant="ghost" className="flex space-x-3 text-lg" disabled>
@@ -60,22 +61,30 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
     )
   }
 
-  const {
-    presets,
-    assistants,
-    selectedAssistant,
-    selectedPreset,
-    chatSettings,
-    setSelectedPreset,
-    setSelectedAssistant,
-    setChatSettings,
-    assistantImages,
-    setChatFiles,
-    setSelectedTools,
-    setShowFilesDisplay,
-    selectedWorkspace,
-    profile
-  } = contextData
+  // Safely extract all context values with defaults
+  const presets = Array.isArray(contextData.presets) ? contextData.presets : []
+  const assistants = Array.isArray(contextData.assistants) ? contextData.assistants : []
+  const selectedAssistant = contextData.selectedAssistant || null
+  const selectedPreset = contextData.selectedPreset || null
+  const chatSettings = contextData.chatSettings
+  const setSelectedPreset = contextData.setSelectedPreset || (() => {})
+  const setSelectedAssistant = contextData.setSelectedAssistant || (() => {})
+  const setChatSettings = contextData.setChatSettings || (() => {})
+  const assistantImages = Array.isArray(contextData.assistantImages) ? contextData.assistantImages : []
+  const setChatFiles = contextData.setChatFiles || (() => {})
+  const setSelectedTools = contextData.setSelectedTools || (() => {})
+  const setShowFilesDisplay = contextData.setShowFilesDisplay || (() => {})
+  const selectedWorkspace = contextData.selectedWorkspace || null
+  const profile = contextData.profile || null
+
+  // Early return if chatSettings is not ready
+  if (!chatSettings) {
+    return (
+      <Button variant="ghost" className="flex space-x-3 text-lg" disabled>
+        Loading...
+      </Button>
+    )
+  }
 
   const handleSelectQuickSetting = async (
     item: Tables<"presets"> | Tables<"assistants"> | null,
@@ -83,78 +92,82 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
   ) => {
     try {
       if (contentType === "assistants" && item) {
-        setSelectedAssistant?.(item as Tables<"assistants">)
+        setSelectedAssistant(item as Tables<"assistants">)
         setLoading(true)
         
-        // Skip DB calls in no-auth mode
         if (profile?.id === "guest" || profile?.user_id === "guest") {
-          setSelectedTools?.([])
-          setChatFiles?.([])
+          setSelectedTools([])
+          setChatFiles([])
           setLoading(false)
-          setSelectedPreset?.(null)
+          setSelectedPreset(null)
         } else {
           try {
-            let allFiles = []
-            const assistantFiles = (await getAssistantFilesByAssistantId(item.id))
-              .files
+            let allFiles: any[] = []
+            const assistantFilesResponse = await getAssistantFilesByAssistantId(item.id)
+            const assistantFiles = assistantFilesResponse?.files || []
             allFiles = [...assistantFiles]
-            const assistantCollections = (
-              await getAssistantCollectionsByAssistantId(item.id)
-            ).collections
+            
+            const assistantCollectionsResponse = await getAssistantCollectionsByAssistantId(item.id)
+            const assistantCollections = assistantCollectionsResponse?.collections || []
+            
             for (const collection of assistantCollections) {
-              const collectionFiles = (
-                await getCollectionFilesByCollectionId(collection.id)
-              ).files
-              allFiles = [...allFiles, ...collectionFiles]
+              try {
+                const collectionFilesResponse = await getCollectionFilesByCollectionId(collection.id)
+                const collectionFiles = collectionFilesResponse?.files || []
+                allFiles = [...allFiles, ...collectionFiles]
+              } catch (e) {
+                console.error("Error loading collection files:", e)
+              }
             }
-            const assistantTools = (await getAssistantToolsByAssistantId(item.id))
-              .tools
-            setSelectedTools?.(assistantTools)
-            setChatFiles?.(
+            
+            const assistantToolsResponse = await getAssistantToolsByAssistantId(item.id)
+            const assistantTools = assistantToolsResponse?.tools || []
+            
+            setSelectedTools(assistantTools)
+            setChatFiles(
               allFiles.map(file => ({
                 id: file.id,
-                name: file.name,
-                type: file.type,
+                name: file.name || "",
+                type: file.type || "",
                 file: null
               }))
             )
-            if (allFiles.length > 0) setShowFilesDisplay?.(true)
+            if (allFiles.length > 0) {
+              setShowFilesDisplay(true)
+            }
           } catch (error) {
             console.error("Error loading assistant data:", error)
-            setSelectedTools?.([])
-            setChatFiles?.([])
+            setSelectedTools([])
+            setChatFiles([])
           }
           setLoading(false)
-          setSelectedPreset?.(null)
+          setSelectedPreset(null)
         }
       } else if (contentType === "presets" && item) {
-        setSelectedPreset?.(item as Tables<"presets">)
-        setSelectedAssistant?.(null)
-        setChatFiles?.([])
-        setSelectedTools?.([])
+        setSelectedPreset(item as Tables<"presets">)
+        setSelectedAssistant(null)
+        setChatFiles([])
+        setSelectedTools([])
       } else {
-        setSelectedPreset?.(null)
-        setSelectedAssistant?.(null)
-        setChatFiles?.([])
-        setSelectedTools?.([])
+        setSelectedPreset(null)
+        setSelectedAssistant(null)
+        setChatFiles([])
+        setSelectedTools([])
         if (selectedWorkspace && setChatSettings) {
-        try {
-          setChatSettings({
-            model: (selectedWorkspace.default_model || "gpt-3.5-turbo") as LLMID,
-            prompt: selectedWorkspace.default_prompt || "",
-            temperature: selectedWorkspace.default_temperature ?? 0.7,
-            contextLength: selectedWorkspace.default_context_length ?? 4096,
-            includeProfileContext: selectedWorkspace.include_profile_context ?? false,
-            includeWorkspaceInstructions:
-              selectedWorkspace.include_workspace_instructions ?? false,
-            embeddingsProvider: (selectedWorkspace.embeddings_provider as
-              | "openai"
-              | "local") || "openai"
-          })
-        } catch (e) {
-          console.error("Error setting workspace chat settings:", e)
+          try {
+            setChatSettings({
+              model: (selectedWorkspace.default_model || "gpt-3.5-turbo") as LLMID,
+              prompt: selectedWorkspace.default_prompt || "",
+              temperature: selectedWorkspace.default_temperature ?? 0.7,
+              contextLength: selectedWorkspace.default_context_length ?? 4096,
+              includeProfileContext: selectedWorkspace.include_profile_context ?? false,
+              includeWorkspaceInstructions: selectedWorkspace.include_workspace_instructions ?? false,
+              embeddingsProvider: (selectedWorkspace.embeddings_provider as "openai" | "local") || "openai"
+            })
+          } catch (e) {
+            console.error("Error setting workspace chat settings:", e)
+          }
         }
-      }
         return
       }
 
@@ -182,28 +195,29 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
   const checkIfModified = () => {
     if (!chatSettings || (!selectedPreset && !selectedAssistant)) return false
 
-    if (selectedPreset) {
-      return (
-        selectedPreset.include_profile_context !==
-          chatSettings?.includeProfileContext ||
-        selectedPreset.include_workspace_instructions !==
-          chatSettings.includeWorkspaceInstructions ||
-        selectedPreset.context_length !== chatSettings.contextLength ||
-        selectedPreset.model !== chatSettings.model ||
-        selectedPreset.prompt !== chatSettings.prompt ||
-        selectedPreset.temperature !== chatSettings.temperature
-      )
-    } else if (selectedAssistant) {
-      return (
-        selectedAssistant.include_profile_context !==
-          chatSettings.includeProfileContext ||
-        selectedAssistant.include_workspace_instructions !==
-          chatSettings.includeWorkspaceInstructions ||
-        selectedAssistant.context_length !== chatSettings.contextLength ||
-        selectedAssistant.model !== chatSettings.model ||
-        selectedAssistant.prompt !== chatSettings.prompt ||
-        selectedAssistant.temperature !== chatSettings.temperature
-      )
+    try {
+      if (selectedPreset) {
+        return (
+          selectedPreset.include_profile_context !== chatSettings.includeProfileContext ||
+          selectedPreset.include_workspace_instructions !== chatSettings.includeWorkspaceInstructions ||
+          selectedPreset.context_length !== chatSettings.contextLength ||
+          selectedPreset.model !== chatSettings.model ||
+          selectedPreset.prompt !== chatSettings.prompt ||
+          selectedPreset.temperature !== chatSettings.temperature
+        )
+      } else if (selectedAssistant) {
+        return (
+          selectedAssistant.include_profile_context !== chatSettings.includeProfileContext ||
+          selectedAssistant.include_workspace_instructions !== chatSettings.includeWorkspaceInstructions ||
+          selectedAssistant.context_length !== chatSettings.contextLength ||
+          selectedAssistant.model !== chatSettings.model ||
+          selectedAssistant.prompt !== chatSettings.prompt ||
+          selectedAssistant.temperature !== chatSettings.temperature
+        )
+      }
+    } catch (e) {
+      console.error("Error in checkIfModified:", e)
+      return false
     }
 
     return false
@@ -211,32 +225,38 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
 
   const isModified = checkIfModified()
 
-  const items = [
-    ...(presets || []).map(preset => ({ ...preset, contentType: "presets" as const })),
-    ...(assistants || []).map(assistant => ({
-      ...assistant,
-      contentType: "assistants" as const
-    }))
-  ]
+  // Safely build items array
+  const items: Array<{ contentType: "presets" | "assistants"; [key: string]: any }> = []
+  
+  try {
+    presets.forEach(preset => {
+      if (preset && typeof preset === "object") {
+        items.push({ ...preset, contentType: "presets" as const })
+      }
+    })
+  } catch (e) {
+    console.error("Error processing presets:", e)
+  }
+
+  try {
+    assistants.forEach(assistant => {
+      if (assistant && typeof assistant === "object") {
+        items.push({ ...assistant, contentType: "assistants" as const })
+      }
+    })
+  } catch (e) {
+    console.error("Error processing assistants:", e)
+  }
 
   const selectedAssistantImage = selectedPreset
     ? ""
-    : (assistantImages || []).find(
-        image => image.path === selectedAssistant?.image_path
-      )?.base64 || ""
+    : (assistantImages.find(
+        image => image?.path === selectedAssistant?.image_path
+      )?.base64 || "")
 
   const modelDetails = selectedPreset?.model
     ? LLM_LIST.find(model => model.modelId === selectedPreset.model)
     : null
-
-  // Early return if critical data is missing
-  if (!chatSettings) {
-    return (
-      <Button variant="ghost" className="flex space-x-3 text-lg" disabled>
-        Loading...
-      </Button>
-    )
-  }
 
   return (
     <DropdownMenu
@@ -250,119 +270,113 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
         }
       }}
     >
-        <DropdownMenuTrigger asChild className="max-w-[400px]" disabled={loading}>
-          <Button variant="ghost" className="flex space-x-3 text-lg">
-            {selectedPreset && (
-              <ModelIcon
-                provider={modelDetails?.provider || "custom"}
-                width={32}
-                height={32}
+      <DropdownMenuTrigger asChild className="max-w-[400px]" disabled={loading}>
+        <Button variant="ghost" className="flex space-x-3 text-lg">
+          {selectedPreset && (
+            <ModelIcon
+              provider={modelDetails?.provider || "custom"}
+              width={32}
+              height={32}
+            />
+          )}
+
+          {selectedAssistant &&
+            (selectedAssistantImage ? (
+              <Image
+                className="rounded"
+                src={selectedAssistantImage}
+                alt="Assistant"
+                width={28}
+                height={28}
               />
-            )}
-
-            {selectedAssistant &&
-              (selectedAssistantImage ? (
-                <Image
-                  className="rounded"
-                  src={selectedAssistantImage}
-                  alt="Assistant"
-                  width={28}
-                  height={28}
-                />
-              ) : (
-                <IconRobotFace
-                  className="bg-primary text-secondary border-primary rounded border-DEFAULT p-1"
-                  size={28}
-                />
-              ))}
-
-            {loading ? (
-              <div className="animate-pulse">Loading assistant...</div>
             ) : (
-              <>
-                <div className="overflow-hidden text-ellipsis">
-                  {isModified &&
-                    (selectedPreset || selectedAssistant) &&
-                    "Modified "}
+              <IconRobotFace
+                className="bg-primary text-secondary border-primary rounded border-DEFAULT p-1"
+                size={28}
+              />
+            ))}
 
-                  {selectedPreset?.name ||
-                    selectedAssistant?.name ||
-                    t("Quick Settings")}
-                </div>
-
-                <IconChevronDown className="ml-1" />
-              </>
-            )}
-          </Button>
-        </DropdownMenuTrigger>
-
-        <DropdownMenuContent
-          className="min-w-[300px] max-w-[500px] space-y-4"
-          align="start"
-        >
-          {(presets || []).length === 0 && (assistants || []).length === 0 ? (
-            <div className="p-8 text-center">No items found.</div>
+          {loading ? (
+            <div className="animate-pulse">Loading...</div>
           ) : (
             <>
-              <Input
-                ref={inputRef}
-                className="w-full"
-                placeholder="Search..."
-                value={search}
-                onChange={e => {
+              <div className="overflow-hidden text-ellipsis">
+                {isModified && (selectedPreset || selectedAssistant) && "Modified "}
+                {selectedPreset?.name || selectedAssistant?.name || t("Quick Settings")}
+              </div>
+              <IconChevronDown className="ml-1" />
+            </>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent
+        className="min-w-[300px] max-w-[500px] space-y-4"
+        align="start"
+      >
+        {items.length === 0 ? (
+          <div className="p-8 text-center">No items found.</div>
+        ) : (
+          <>
+            <Input
+              ref={inputRef}
+              className="w-full"
+              placeholder="Search..."
+              value={search}
+              onChange={e => {
+                try {
+                  setSearch(e.target.value || "")
+                } catch (e) {
+                  console.error("Search onChange error:", e)
+                }
+              }}
+              onKeyDown={e => e.stopPropagation()}
+            />
+
+            {(selectedPreset || selectedAssistant) && (
+              <QuickSettingOption
+                contentType={selectedPreset ? "presets" : "assistants"}
+                isSelected={true}
+                item={(selectedPreset || selectedAssistant) as Tables<"presets"> | Tables<"assistants">}
+                onSelect={() => {
                   try {
-                    setSearch(e.target.value)
+                    handleSelectQuickSetting(null, "remove")
                   } catch (e) {
-                    console.error("Search onChange error:", e)
+                    console.error("Remove quick setting error:", e)
                   }
                 }}
-                onKeyDown={e => e.stopPropagation()}
+                image={selectedPreset ? "" : selectedAssistantImage}
               />
+            )}
 
-              {(selectedPreset || selectedAssistant) ? (
-                <QuickSettingOption
-                  contentType={selectedPreset ? "presets" : "assistants"}
-                  isSelected={true}
-                  item={
-                    (selectedPreset ||
-                      selectedAssistant) as
-                      | Tables<"presets">
-                      | Tables<"assistants">
-                  }
-                  onSelect={() => {
-                    try {
-                      if (handleSelectQuickSetting) {
-                        handleSelectQuickSetting(null, "remove")
-                      }
-                    } catch (e) {
-                      console.error("Remove quick setting error:", e)
-                    }
-                  }}
-                  image={selectedPreset ? "" : (selectedAssistantImage || "")}
-                />
-              ) : null}
-
-              {items
-                .filter(
-                  item =>
+            {items
+              .filter(item => {
+                try {
+                  return (
                     item &&
                     item.name &&
+                    typeof item.name === "string" &&
                     item.name.toLowerCase().includes(search.toLowerCase()) &&
                     item.id !== selectedPreset?.id &&
                     item.id !== selectedAssistant?.id
-                )
-                .map(({ contentType, ...item }) => {
+                  )
+                } catch (e) {
+                  return false
+                }
+              })
+              .map(({ contentType, ...item }) => {
+                try {
                   if (!item || !item.id) return null
                   return (
                     <QuickSettingOption
                       key={item.id}
                       contentType={contentType as "presets" | "assistants"}
                       isSelected={false}
-                      item={item}
+                      item={item as Tables<"presets"> | Tables<"assistants">}
                       onSelect={() => {
                         try {
                           handleSelectQuickSetting(
-                            item,
+                            item as Tables<"presets"> | Tables<"assistants">,
                             contentType as "presets" | "assistants"
                           )
                         } catch (e) {
@@ -371,19 +385,21 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
                       }}
                       image={
                         contentType === "assistants"
-                          ? (assistantImages || []).find(
-                              image =>
-                                image.path ===
-                                (item as Tables<"assistants">).image_path
-                            )?.base64 || ""
+                          ? (assistantImages.find(
+                              image => image?.path === (item as Tables<"assistants">).image_path
+                            )?.base64 || "")
                           : ""
                       }
                     />
                   )
-                })
-                .filter(Boolean)}
-            </>
-          )}
+                } catch (e) {
+                  console.error("Error rendering QuickSettingOption:", e)
+                  return null
+                }
+              })
+              .filter(Boolean)}
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )
