@@ -407,13 +407,25 @@ export const useChatHandler = () => {
       // Show error to user
       const errorMessage = error instanceof Error 
         ? error.message 
+        : typeof error === "string"
+        ? error
         : "An error occurred while sending the message"
       
       console.error("Error in handleSendMessage:", error)
+      console.error("Error details:", {
+        chatSettings: !!chatSettings,
+        profile: !!profile,
+        selectedWorkspace: !!selectedWorkspace,
+        userInput: userInput?.substring(0, 50)
+      })
       
-      // Import toast dynamically to avoid SSR issues
-      const { toast } = await import("sonner")
-      toast.error(errorMessage)
+      // Show toast error
+      try {
+        const { toast } = await import("sonner")
+        toast.error(errorMessage)
+      } catch (toastError) {
+        console.error("Could not show toast:", toastError)
+      }
       
       throw error // Re-throw to allow caller to handle
     }
