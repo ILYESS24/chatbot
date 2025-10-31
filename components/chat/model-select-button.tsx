@@ -10,6 +10,7 @@ import {
 } from "../ui/dropdown-menu"
 import { ModelIcon } from "../models/model-icon"
 import { ModelOption } from "../models/model-option"
+import { IconCheck } from "@tabler/icons-react"
 import { Input } from "../ui/input"
 import { useRef, useState, useEffect } from "react"
 
@@ -166,12 +167,16 @@ export const ModelSelectButton: FC<ModelSelectButtonProps> = ({}) => {
                 <div>
                   {(filteredModels || []).map(model => {
                     if (!model || !model.modelId) return null
+                    const isSelected = chatSettings.model === model.modelId
                     return (
                       <div
                         key={model.modelId}
-                        className="flex items-center space-x-1"
+                        className="flex items-center space-x-1 cursor-pointer"
                         onClick={() => handleSelectModel(model.modelId)}
                       >
+                        {isSelected && (
+                          <IconCheck className="ml-2" size={20} />
+                        )}
                         <ModelOption
                           key={model.modelId}
                           model={model}
