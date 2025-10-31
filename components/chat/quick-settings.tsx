@@ -137,7 +137,7 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
         setSelectedAssistant?.(null)
         setChatFiles?.([])
         setSelectedTools?.([])
-      if (selectedWorkspace && setChatSettings) {
+        if (selectedWorkspace && setChatSettings) {
         try {
           setChatSettings({
             model: (selectedWorkspace.default_model || "gpt-3.5-turbo") as LLMID,
@@ -238,7 +238,6 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
     )
   }
 
-  // Remove ErrorBoundary temporarily to see the real error
   return (
     <DropdownMenu
       open={isOpen}
@@ -387,13 +386,5 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
           )}
       </DropdownMenuContent>
     </DropdownMenu>
-    )
-  } catch (error) {
-    console.error("QuickSettings render error:", error)
-    return (
-      <Button variant="ghost" className="flex space-x-3 text-lg" disabled>
-        Quick Settings (Error)
-      </Button>
-    )
-  }
+  )
 }
