@@ -277,6 +277,42 @@ export const fetchChatResponse = async (
           toast.error(`API endpoint ${url} not found (404)`)
         }
       }
+    } else if (response.status === 429) {
+      // Rate limit error
+      try {
+        const errorData = await clonedResponse.json()
+        let errorMessage = errorData.message || "Rate limit exceeded"
+        
+        // Provide more helpful message
+        if (errorMessage.includes("rate limit") || errorMessage.includes("429")) {
+          errorMessage = "Too many requests. Please wait a moment and try again. Your API provider has rate limits."
+        }
+        
+        toast.error(errorMessage, {
+          duration: 5000, // Show for 5 seconds
+          description: "This usually happens when you've made too many requests in a short time."
+        })
+      } catch {
+        toast.error("Rate limit exceeded. Please wait a moment and try again.", {
+          duration: 5000
+        })
+      }
+    } else if (response.status === 401) {
+      // Unauthorized - API key issue
+      try {
+        const errorData = await clonedResponse.json()
+        toast.error(errorData.message || "Invalid API key. Please check your API keys in settings.")
+      } catch {
+        toast.error("Invalid API key. Please check your API keys in settings.")
+      }
+    } else if (response.status === 500 || response.status === 502 || response.status === 503) {
+      // Server errors
+      try {
+        const errorData = await clonedResponse.json()
+        toast.error(errorData.message || `Server error (${response.status}). Please try again later.`)
+      } catch {
+        toast.error(`Server error (${response.status}). Please try again later.`)
+      }
     } else {
       try {
         const errorData = await clonedResponse.json()
