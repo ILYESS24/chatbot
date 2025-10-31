@@ -41,6 +41,18 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
     }
   })
 
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        try {
+          inputRef.current?.focus()
+        } catch (e) {
+          console.error("Focus error:", e)
+        }
+      }, 100)
+    }
+  }, [isOpen])
+
   if (!contextData) {
     return (
       <Button variant="ghost" className="flex space-x-3 text-lg" disabled>
@@ -65,18 +77,6 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
     selectedWorkspace,
     profile
   } = contextData
-
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => {
-        try {
-          inputRef.current?.focus()
-        } catch (e) {
-          console.error("Focus error:", e)
-        }
-      }, 100)
-    }
-  }, [isOpen])
 
   const handleSelectQuickSetting = async (
     item: Tables<"presets"> | Tables<"assistants"> | null,
