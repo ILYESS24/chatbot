@@ -137,9 +137,10 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
         setSelectedAssistant?.(null)
         setChatFiles?.([])
         setSelectedTools?.([])
-        if (selectedWorkspace) {
-          setChatSettings?.({
-            model: selectedWorkspace.default_model as LLMID,
+      if (selectedWorkspace && setChatSettings) {
+        try {
+          setChatSettings({
+            model: (selectedWorkspace.default_model || "gpt-3.5-turbo") as LLMID,
             prompt: selectedWorkspace.default_prompt || "",
             temperature: selectedWorkspace.default_temperature ?? 0.7,
             contextLength: selectedWorkspace.default_context_length ?? 4096,
@@ -150,20 +151,27 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
               | "openai"
               | "local") || "openai"
           })
+        } catch (e) {
+          console.error("Error setting workspace chat settings:", e)
         }
+      }
         return
       }
 
-      if (item && item.model) {
-        setChatSettings?.({
-          model: item.model as LLMID,
-          prompt: item.prompt || "",
-          temperature: item.temperature ?? 0.7,
-          contextLength: item.context_length ?? 4096,
-          includeProfileContext: item.include_profile_context ?? false,
-          includeWorkspaceInstructions: item.include_workspace_instructions ?? false,
-          embeddingsProvider: (item.embeddings_provider as "openai" | "local") || "openai"
-        })
+      if (item && item.model && setChatSettings) {
+        try {
+          setChatSettings({
+            model: item.model as LLMID,
+            prompt: item.prompt || "",
+            temperature: item.temperature ?? 0.7,
+            contextLength: item.context_length ?? 4096,
+            includeProfileContext: item.include_profile_context ?? false,
+            includeWorkspaceInstructions: item.include_workspace_instructions ?? false,
+            embeddingsProvider: (item.embeddings_provider as "openai" | "local") || "openai"
+          })
+        } catch (e) {
+          console.error("Error setting chat settings from item:", e)
+        }
       }
     } catch (error) {
       console.error("Error in handleSelectQuickSetting:", error)
@@ -324,12 +332,14 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
                   }
                   onSelect={() => {
                     try {
-                      handleSelectQuickSetting(null, "remove")
+                      if (handleSelectQuickSetting) {
+                        handleSelectQuickSetting(null, "remove")
+                      }
                     } catch (e) {
                       console.error("Remove quick setting error:", e)
                     }
                   }}
-                  image={selectedPreset ? "" : selectedAssistantImage}
+                  image={selectedPreset ? "" : (selectedAssistantImage || "")}
                 />
               ) : null}
 
@@ -377,5 +387,13 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
           )}
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+    )
+  } catch (error) {
+    console.error("QuickSettings render error:", error)
+    return (
+      <Button variant="ghost" className="flex space-x-3 text-lg" disabled>
+        Quick Settings (Error)
+      </Button>
+    )
+  }
 }
