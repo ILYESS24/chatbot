@@ -81,11 +81,24 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
     }, 200) // FIX: hacky
   }, [selectedPreset, selectedAssistant, handleFocusChatInput])
 
-  const handleKeyDown = (event: React.KeyboardEvent) => {
+  const handleKeyDown = async (event: React.KeyboardEvent) => {
     if (!isTyping && event.key === "Enter" && !event.shiftKey) {
       event.preventDefault()
       setIsPromptPickerOpen(false)
-      handleSendMessage(userInput, chatMessages, false)
+      
+      if (!userInput || !chatSettings) {
+        if (!chatSettings) {
+          toast.error("Chat settings not ready. Please wait...")
+        }
+        return
+      }
+      
+      try {
+        await handleSendMessage(userInput, chatMessages, false)
+      } catch (error: any) {
+        console.error("Error sending message:", error)
+        toast.error(error?.message || "Failed to send message")
+      }
     }
 
     // Consolidate conditions to avoid TypeScript error
@@ -264,12 +277,22 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
             <IconSend
               className={cn(
                 "bg-primary text-secondary rounded p-1",
-                !userInput && "cursor-not-allowed opacity-50"
+                (!userInput || !chatSettings) && "cursor-not-allowed opacity-50"
               )}
-              onClick={() => {
-                if (!userInput) return
+              onClick={async () => {
+                if (!userInput || !chatSettings) {
+                  if (!chatSettings) {
+                    toast.error("Chat settings not ready. Please wait...")
+                  }
+                  return
+                }
 
-                handleSendMessage(userInput, chatMessages, false)
+                try {
+                  await handleSendMessage(userInput, chatMessages, false)
+                } catch (error: any) {
+                  console.error("Error sending message:", error)
+                  toast.error(error?.message || "Failed to send message")
+                }
               }}
               size={30}
             />

@@ -403,6 +403,19 @@ export const useChatHandler = () => {
       setIsGenerating(false)
       setFirstTokenReceived(false)
       setUserInput(startingInput)
+      
+      // Show error to user
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "An error occurred while sending the message"
+      
+      console.error("Error in handleSendMessage:", error)
+      
+      // Import toast dynamically to avoid SSR issues
+      const { toast } = await import("sonner")
+      toast.error(errorMessage)
+      
+      throw error // Re-throw to allow caller to handle
     }
   }
 
