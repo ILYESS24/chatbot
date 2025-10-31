@@ -266,15 +266,41 @@ export const fetchChatResponse = async (
     
     if (response.status === 404) {
       if (!isHosted) {
+        // Ollama (local) model not found
         toast.error(
-          "Model not found. Make sure you have it downloaded via Ollama."
+          "Model not found. Make sure you have it downloaded via Ollama.",
+          {
+            duration: 5000,
+            description: `Try: ollama pull <model-name>`
+          }
         )
       } else {
+        // Hosted API endpoint not found
         try {
           const errorData = await clonedResponse.json()
-          toast.error(errorData.message || `API endpoint ${url} not found (404)`)
+          let errorMessage = errorData.message || "API endpoint not found"
+          
+          // Provide more helpful messages based on the endpoint
+          if (url.includes("/api/chat/openai")) {
+            errorMessage = "OpenAI endpoint not found. The model may not be available or the API route may be missing."
+          } else if (url.includes("/api/chat/anthropic")) {
+            errorMessage = "Anthropic endpoint not found. The model may not be available or the API route may be missing."
+          } else if (url.includes("/api/chat/custom")) {
+            errorMessage = "Custom model endpoint not found. Please check your custom model configuration."
+          } else {
+            errorMessage = `API endpoint not found (404): ${url}`
+          }
+          
+          toast.error(errorMessage, {
+            duration: 5000,
+            description: "This usually means the model or API endpoint doesn't exist."
+          })
         } catch {
-          toast.error(`API endpoint ${url} not found (404)`)
+          let endpointName = url.split("/").pop() || "API endpoint"
+          toast.error(`${endpointName} not found (404)`, {
+            duration: 5000,
+            description: "The requested endpoint doesn't exist. Please check your model selection."
+          })
         }
       }
     } else if (response.status === 429) {

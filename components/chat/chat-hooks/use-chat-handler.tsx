@@ -219,6 +219,18 @@ export const useChatHandler = () => {
         ...availableOpenRouterModels
       ].find(llm => llm.modelId === chatSettings?.model)
 
+      if (!modelData && chatSettings?.model) {
+        console.error("Model not found:", {
+          requestedModel: chatSettings.model,
+          availableModels: [
+            ...models.map(m => m.model_id),
+            ...LLM_LIST.map(m => m.modelId),
+            ...availableLocalModels.map(m => m.modelId),
+            ...availableOpenRouterModels.map(m => m.modelId)
+          ]
+        })
+      }
+
       validateChatSettings(
         chatSettings,
         modelData,
