@@ -261,6 +261,9 @@ export const fetchChatResponse = async (
   })
 
   if (!response.ok) {
+    // Clone the response before reading it to avoid locking the stream
+    const clonedResponse = response.clone()
+    
     if (response.status === 404) {
       if (!isHosted) {
         toast.error(
@@ -268,7 +271,7 @@ export const fetchChatResponse = async (
         )
       } else {
         try {
-          const errorData = await response.json()
+          const errorData = await clonedResponse.json()
           toast.error(errorData.message || `API endpoint ${url} not found (404)`)
         } catch {
           toast.error(`API endpoint ${url} not found (404)`)
@@ -276,7 +279,7 @@ export const fetchChatResponse = async (
       }
     } else {
       try {
-        const errorData = await response.json()
+        const errorData = await clonedResponse.json()
         toast.error(errorData.message || `Error: ${response.status}`)
       } catch {
         toast.error(`Error: ${response.status}`)
@@ -285,6 +288,9 @@ export const fetchChatResponse = async (
 
     setIsGenerating(false)
     setChatMessages(prevMessages => prevMessages.slice(0, -2))
+    
+    // Throw an error to prevent processResponse from being called
+    throw new Error(`Request failed with status ${response.status}`)
   }
 
   return response

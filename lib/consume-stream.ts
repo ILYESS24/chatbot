@@ -3,10 +3,23 @@ export async function consumeReadableStream(
   callback: (chunk: string) => void,
   signal: AbortSignal
 ): Promise<void> {
+  // Check if stream is already locked
+  if (stream.locked) {
+    console.error("Stream is already locked, cannot create new reader")
+    throw new Error("ReadableStream is already locked to a reader")
+  }
+
   const reader = stream.getReader()
   const decoder = new TextDecoder()
 
-  signal.addEventListener("abort", () => reader.cancel(), { once: true })
+  signal.addEventListener("abort", () => {
+    try {
+      reader.cancel()
+    } catch (e) {
+      // Reader may already be released
+      console.error("Error cancelling reader:", e)
+    }
+  }, { once: true })
 
   try {
     while (true) {
@@ -25,8 +38,14 @@ export async function consumeReadableStream(
       console.error("Stream reading was aborted:", error)
     } else {
       console.error("Error consuming stream:", error)
+      throw error // Re-throw to propagate the error
     }
   } finally {
-    reader.releaseLock()
+    try {
+      reader.releaseLock()
+    } catch (e) {
+      // Lock may already be released
+      console.error("Error releasing lock:", e)
+    }
   }
 }
