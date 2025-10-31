@@ -308,7 +308,16 @@ export const processResponse = async (
   let fullText = ""
   let contentToAdd = ""
 
-  if (response.body) {
+  if (!response.body) {
+    throw new Error("Response body is null")
+  }
+
+  // Check if body is already locked
+  if (response.body.locked) {
+    throw new Error("Response body stream is already locked to a reader")
+  }
+
+  try {
     await consumeReadableStream(
       response.body,
       chunk => {
@@ -356,8 +365,15 @@ export const processResponse = async (
     )
 
     return fullText
-  } else {
-    throw new Error("Response body is null")
+  } catch (error: any) {
+    console.error("Error in processResponse:", error)
+    
+    // If stream is locked, provide a more helpful error message
+    if (error?.message?.includes("locked")) {
+      throw new Error("Stream is already in use. Please try again.")
+    }
+    
+    throw error
   }
 }
 
