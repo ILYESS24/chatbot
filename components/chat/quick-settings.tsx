@@ -231,19 +231,19 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
     )
   }
 
+  // Remove ErrorBoundary temporarily to see the real error
   return (
-    <QuickSettingsErrorBoundary>
-      <DropdownMenu
-        open={isOpen}
-        onOpenChange={isOpen => {
-          try {
-            setIsOpen(isOpen)
-            setSearch("")
-          } catch (e) {
-            console.error("onOpenChange error:", e)
-          }
-        }}
-      >
+    <DropdownMenu
+      open={isOpen}
+      onOpenChange={isOpen => {
+        try {
+          setIsOpen(isOpen)
+          setSearch("")
+        } catch (e) {
+          console.error("onOpenChange error:", e)
+        }
+      }}
+    >
         <DropdownMenuTrigger asChild className="max-w-[400px]" disabled={loading}>
           <Button variant="ghost" className="flex space-x-3 text-lg">
             {selectedPreset && (
@@ -313,7 +313,7 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
                 onKeyDown={e => e.stopPropagation()}
               />
 
-              {!!(selectedPreset || selectedAssistant) && selectedPreset || selectedAssistant ? (
+              {!!(selectedPreset || selectedAssistant) && (selectedPreset || selectedAssistant) ? (
                 <QuickSettingOption
                   contentType={selectedPreset ? "presets" : "assistants"}
                   isSelected={true}
@@ -376,8 +376,7 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
                 .filter(Boolean)}
             </>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </QuickSettingsErrorBoundary>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

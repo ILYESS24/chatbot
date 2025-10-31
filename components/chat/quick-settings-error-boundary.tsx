@@ -23,16 +23,22 @@ export class QuickSettingsErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: any) {
     console.error("QuickSettings Error:", error, errorInfo)
+    console.error("Error stack:", error.stack)
+    console.error("Error component stack:", errorInfo.componentStack)
   }
 
   render() {
     if (this.state.hasError) {
+      console.error("ErrorBoundary triggered, error:", this.state.error)
       return (
         <button
           className="rounded border px-3 py-2 text-sm"
-          onClick={() => this.setState({ hasError: false, error: null })}
+          onClick={() => {
+            console.log("Retrying QuickSettings...")
+            this.setState({ hasError: false, error: null })
+          }}
         >
-          Quick Settings (Error - Click to retry)
+          Quick Settings (Click to retry)
         </button>
       )
     }
