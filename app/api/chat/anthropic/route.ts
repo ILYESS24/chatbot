@@ -99,7 +99,15 @@ export async function POST(request: NextRequest) {
         errorMessage = "Anthropic API Key is invalid. Please check your API key in settings."
         errorCode = 401
       } else if (errorMessage.toLowerCase().includes("rate limit") || errorCode === 429) {
-        errorMessage = "Rate limit exceeded. Please wait a moment and try again."
+        // Check if Anthropic provides retry-after information
+        const retryAfter = error.headers?.get?.("retry-after") || error.headers?.get?.("Retry-After")
+        if (retryAfter) {
+          const waitSeconds = parseInt(retryAfter, 10)
+          const waitMinutes = Math.ceil(waitSeconds / 60)
+          errorMessage = `Rate limit exceeded. Please wait ${waitSeconds} seconds (${waitMinutes} minute${waitMinutes > 1 ? 's' : ''}) before trying again.`
+        } else {
+          errorMessage = "Rate limit exceeded. Please wait 1-2 minutes before trying again."
+        }
         errorCode = 429
       } else if (errorMessage.toLowerCase().includes("context") || errorCode === 400) {
         errorMessage = "Message too long. Please reduce the message length or context size."

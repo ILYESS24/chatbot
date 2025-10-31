@@ -267,7 +267,7 @@ export const fetchChatResponse = async (
     if (response.status === 404) {
       if (!isHosted) {
         // Ollama (local) model not found
-        toast.error(
+      toast.error(
           "Model not found. Make sure you have it downloaded via Ollama.",
           {
             duration: 5000,
@@ -309,18 +309,41 @@ export const fetchChatResponse = async (
         const errorData = await clonedResponse.json()
         let errorMessage = errorData.message || "Rate limit exceeded"
         
-        // Provide more helpful message
+        // Try to get Retry-After header for wait time
+        const retryAfter = response.headers.get("Retry-After") || response.headers.get("retry-after")
+        const waitTime = retryAfter ? parseInt(retryAfter, 10) : null
+        
+        // Provide more helpful message with wait time if available
         if (errorMessage.includes("rate limit") || errorMessage.includes("429")) {
-          errorMessage = "Too many requests. Please wait a moment and try again. Your API provider has rate limits."
+          if (waitTime) {
+            const minutes = Math.ceil(waitTime / 60)
+            errorMessage = `Rate limit exceeded. Please wait ${waitTime} seconds (${minutes} minute${minutes > 1 ? 's' : ''}) before trying again.`
+          } else {
+            errorMessage = "Too many requests. Please wait a moment and try again. Your API provider has rate limits."
+          }
         }
         
         toast.error(errorMessage, {
-          duration: 5000, // Show for 5 seconds
-          description: "This usually happens when you've made too many requests in a short time."
+          duration: 8000, // Show for 8 seconds to allow reading
+          description: waitTime 
+            ? `Wait approximately ${Math.ceil(waitTime / 60)} minute(s) before retrying.` 
+            : "This usually happens when you've made too many requests in a short time. Wait 1-2 minutes before retrying."
         })
       } catch {
-        toast.error("Rate limit exceeded. Please wait a moment and try again.", {
-          duration: 5000
+        const retryAfter = response.headers.get("Retry-After") || response.headers.get("retry-after")
+        const waitTime = retryAfter ? parseInt(retryAfter, 10) : null
+        
+        let errorMessage = "Rate limit exceeded. Please wait a moment and try again."
+        if (waitTime) {
+          const minutes = Math.ceil(waitTime / 60)
+          errorMessage = `Rate limit exceeded. Please wait ${waitTime} seconds (${minutes} minute${minutes > 1 ? 's' : ''}) before trying again.`
+        }
+        
+        toast.error(errorMessage, {
+          duration: 8000,
+          description: waitTime 
+            ? `Wait approximately ${Math.ceil(waitTime / 60)} minute(s) before retrying.` 
+            : "Wait 1-2 minutes before retrying."
         })
       }
     } else if (response.status === 401) {
