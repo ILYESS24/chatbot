@@ -1,4 +1,5 @@
 import { ChatbotUIContext } from "@/context/context"
+import { LLM_LIST } from "@/lib/models/llm/llm-list"
 import { LLMID, ModelProvider } from "@/types"
 import { IconChevronDown } from "@tabler/icons-react"
 import { FC, useContext } from "react"
@@ -51,6 +52,7 @@ export const ModelSelectButton: FC<ModelSelectButtonProps> = ({}) => {
     return null
   }
 
+  // Include all default LLM models even if no API keys are set
   const allModels = [
     ...(models || []).map(model => ({
       modelId: model.model_id as LLMID,
@@ -62,7 +64,17 @@ export const ModelSelectButton: FC<ModelSelectButtonProps> = ({}) => {
     })),
     ...(availableHostedModels || []),
     ...(availableLocalModels || []),
-    ...(availableOpenRouterModels || [])
+    ...(availableOpenRouterModels || []),
+    // Add default LLM_LIST models if they're not already included
+    ...LLM_LIST.filter(
+      defaultModel =>
+        ![
+          ...(models || []).map(m => m.model_id),
+          ...(availableHostedModels || []).map(m => m.modelId),
+          ...(availableLocalModels || []).map(m => m.modelId),
+          ...(availableOpenRouterModels || []).map(m => m.modelId)
+        ].includes(defaultModel.modelId)
+    )
   ]
 
   const groupedModels = (allModels || []).reduce<Record<string, typeof allModels>>(
