@@ -69,8 +69,24 @@ export async function POST(request: Request) {
         errorMessage = "Rate limit exceeded. Please wait 1-2 minutes before trying again."
       }
       errorCode = 429
-    } else if (errorMessage.toLowerCase().includes("context length") || errorCode === 400) {
-      errorMessage = "Message too long. Please reduce the message length or context size."
+    } else if (errorMessage.toLowerCase().includes("context length") || 
+               errorMessage.toLowerCase().includes("token") ||
+               errorMessage.toLowerCase().includes("too long") ||
+               errorCode === 400) {
+      // Handle 400 Bad Request errors
+      if (errorMessage.toLowerCase().includes("context length") || 
+          errorMessage.toLowerCase().includes("token") ||
+          errorMessage.toLowerCase().includes("too long")) {
+        errorMessage = "Message too long. Please reduce the message length or context size."
+      } else if (errorMessage.toLowerCase().includes("invalid") || 
+                 errorMessage.toLowerCase().includes("format")) {
+        errorMessage = "Invalid request format. Please check your message and try again."
+      } else if (errorMessage.toLowerCase().includes("model") || 
+                 errorMessage.toLowerCase().includes("not found")) {
+        errorMessage = "Model not available or invalid. Please select a different model."
+      } else {
+        errorMessage = errorMessage || "Invalid request (400). Please check your message and try again."
+      }
       errorCode = 400
     } else if (!error.message) {
       errorMessage = "An unexpected error occurred while processing your request. Please try again."

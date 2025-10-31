@@ -355,6 +355,40 @@ export const fetchChatResponse = async (
             : "⏱️ Wait 1-2 minutes before retrying. Check your API provider's rate limit documentation."
         })
       }
+    } else if (response.status === 400) {
+      // Bad Request - invalid input
+      try {
+        const errorData = await clonedResponse.json()
+        let errorMessage = errorData.message || "Invalid request"
+        
+        // Provide more helpful messages based on common 400 errors
+        if (errorMessage.toLowerCase().includes("context length") || 
+            errorMessage.toLowerCase().includes("token") ||
+            errorMessage.toLowerCase().includes("too long")) {
+          errorMessage = "Message too long. Please reduce the message length or context size."
+        } else if (errorMessage.toLowerCase().includes("invalid") || 
+                   errorMessage.toLowerCase().includes("format")) {
+          errorMessage = "Invalid request format. Please check your message and try again."
+        } else if (errorMessage.toLowerCase().includes("model") || 
+                   errorMessage.toLowerCase().includes("not found")) {
+          errorMessage = "Model not available or invalid. Please select a different model."
+        } else if (errorMessage.toLowerCase().includes("parameter") ||
+                   errorMessage.toLowerCase().includes("missing")) {
+          errorMessage = "Missing or invalid parameters. Please try again."
+        }
+        
+        toast.error(errorMessage, {
+          duration: 8000,
+          description: errorData.message 
+            ? `Error details: ${errorData.message}` 
+            : "This usually happens when the request format is invalid or the message is too long."
+        })
+      } catch {
+        toast.error("Invalid request (400). Please check your message and try again.", {
+          duration: 8000,
+          description: "The request format might be invalid or the message might be too long."
+        })
+      }
     } else if (response.status === 401) {
       // Unauthorized - API key issue
       try {
