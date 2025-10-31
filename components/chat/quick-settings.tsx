@@ -25,7 +25,15 @@ interface QuickSettingsProps {}
 
 export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
   // All hooks must be called unconditionally first
-  const { t } = useTranslation()
+  let t: (key: string) => string
+  try {
+    const translation = useTranslation()
+    t = translation.t || ((key: string) => key)
+  } catch (e) {
+    console.error("Translation hook error:", e)
+    t = (key: string) => key
+  }
+  
   const contextData = useContext(ChatbotUIContext)
   const inputRef = useRef<HTMLInputElement>(null)
   const [isOpen, setIsOpen] = useState(false)
@@ -302,7 +310,7 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
             <>
               <div className="overflow-hidden text-ellipsis">
                 {isModified && (selectedPreset || selectedAssistant) && "Modified "}
-                {selectedPreset?.name || selectedAssistant?.name || t("Quick Settings")}
+                {selectedPreset?.name || selectedAssistant?.name || (typeof t === "function" ? t("Quick Settings") : "Quick Settings")}
               </div>
               <IconChevronDown className="ml-1" />
             </>
