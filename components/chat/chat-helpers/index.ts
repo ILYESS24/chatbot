@@ -311,39 +311,48 @@ export const fetchChatResponse = async (
         
         // Try to get Retry-After header for wait time
         const retryAfter = response.headers.get("Retry-After") || response.headers.get("retry-after")
-        const waitTime = retryAfter ? parseInt(retryAfter, 10) : null
+        const waitTime = retryAfter ? parseInt(retryAfter, 10) : 120 // Default to 2 minutes if not provided
         
         // Provide more helpful message with wait time if available
         if (errorMessage.includes("rate limit") || errorMessage.includes("429")) {
-          if (waitTime) {
+          if (retryAfter) {
             const minutes = Math.ceil(waitTime / 60)
-            errorMessage = `Rate limit exceeded. Please wait ${waitTime} seconds (${minutes} minute${minutes > 1 ? 's' : ''}) before trying again.`
+            const seconds = waitTime % 60
+            errorMessage = `Rate limit exceeded. Please wait ${waitTime} seconds (${minutes} minute${minutes > 1 ? 's' : ''}${seconds > 0 ? ` and ${seconds} second${seconds > 1 ? 's' : ''}` : ''}) before trying again.`
           } else {
-            errorMessage = "Too many requests. Please wait a moment and try again. Your API provider has rate limits."
+            errorMessage = "Rate limit exceeded. Please wait 1-2 minutes before trying again. Your API provider has rate limits to prevent abuse."
           }
         }
         
+        // Calculate recommended wait time (default 2 minutes if not specified)
+        const recommendedWaitSeconds = retryAfter ? waitTime : 120
+        const recommendedWaitMinutes = Math.ceil(recommendedWaitSeconds / 60)
+        
         toast.error(errorMessage, {
-          duration: 8000, // Show for 8 seconds to allow reading
-          description: waitTime 
-            ? `Wait approximately ${Math.ceil(waitTime / 60)} minute(s) before retrying.` 
-            : "This usually happens when you've made too many requests in a short time. Wait 1-2 minutes before retrying."
+          duration: 10000, // Show for 10 seconds to allow reading
+          description: retryAfter 
+            ? `⏱️ Wait ${recommendedWaitMinutes} minute(s) (${recommendedWaitSeconds} seconds) before retrying. You've hit the rate limit for your API plan.` 
+            : "⏱️ This usually happens when you've made too many requests in a short time. Wait 1-2 minutes before retrying. Consider upgrading your API plan for higher limits."
         })
       } catch {
         const retryAfter = response.headers.get("Retry-After") || response.headers.get("retry-after")
-        const waitTime = retryAfter ? parseInt(retryAfter, 10) : null
+        const waitTime = retryAfter ? parseInt(retryAfter, 10) : 120
         
         let errorMessage = "Rate limit exceeded. Please wait a moment and try again."
-        if (waitTime) {
+        if (retryAfter) {
           const minutes = Math.ceil(waitTime / 60)
-          errorMessage = `Rate limit exceeded. Please wait ${waitTime} seconds (${minutes} minute${minutes > 1 ? 's' : ''}) before trying again.`
+          const seconds = waitTime % 60
+          errorMessage = `Rate limit exceeded. Please wait ${waitTime} seconds (${minutes} minute${minutes > 1 ? 's' : ''}${seconds > 0 ? ` and ${seconds} second${seconds > 1 ? 's' : ''}` : ''}) before trying again.`
         }
         
+        const recommendedWaitSeconds = retryAfter ? waitTime : 120
+        const recommendedWaitMinutes = Math.ceil(recommendedWaitSeconds / 60)
+        
         toast.error(errorMessage, {
-          duration: 8000,
-          description: waitTime 
-            ? `Wait approximately ${Math.ceil(waitTime / 60)} minute(s) before retrying.` 
-            : "Wait 1-2 minutes before retrying."
+          duration: 10000,
+          description: retryAfter 
+            ? `⏱️ Wait ${recommendedWaitMinutes} minute(s) (${recommendedWaitSeconds} seconds) before retrying.` 
+            : "⏱️ Wait 1-2 minutes before retrying. Check your API provider's rate limit documentation."
         })
       }
     } else if (response.status === 401) {
